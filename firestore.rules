@@ -1,0 +1,149 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(ownerUid) {
+      return isSignedIn() && request.auth.uid == ownerUid;
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Content Creation Collections
+    match /content_categories/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /content_items/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /content_trees/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /content_youtube/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /content_tiktok/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /content_facebook/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /content_instagram/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    // Vault Collections
+    match /vault_folders/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /vault_credentials/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /vault_bank_cards/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /vault_custom/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    // Financial Collections
+    match /financial_entries/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /budgets/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /savings_goals/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /financial_calculations/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    // Workspace Collections
+    match /daily_tasks/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /daily_task_sessions/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /work_threads/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /idea_folders/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    match /idea_notes/{docId} {
+      allow read, delete: if isOwner(resource.data.owner_uid);
+      allow create: if isOwner(request.resource.data.owner_uid);
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+    }
+
+    // User Settings Collection
+    match /user_settings/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+  }
+}

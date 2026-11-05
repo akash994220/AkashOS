@@ -1,0 +1,440 @@
+{
+  "entities": {
+    "ContentCategory": {
+      "title": "ContentCategory",
+      "description": "Content category for organizing content with optional parent nesting",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "owner_uid": { "type": "string" },
+        "name": { "type": "string" },
+        "parent_category_id": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "name"]
+    },
+    "ContentItem": {
+      "title": "ContentItem",
+      "description": "Unified content item with format, script, tags, and status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "owner_uid": { "type": "string" },
+        "category_id": { "type": "string" },
+        "format": { "type": "string", "enum": ["long_form", "short_form"] },
+        "title": { "type": "string" },
+        "script_text": { "type": "string" },
+        "tags": { "type": "array" },
+        "status": { "type": "string", "enum": ["draft", "ready", "posted"] },
+        "posted_to": { "type": "array" },
+        "posted_date": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "category_id", "format", "title", "status"]
+    },
+    "ContentYoutube": {
+      "title": "ContentYoutube",
+      "description": "YouTube content pipeline item",
+      "type": "object",
+      "properties": {
+        "content_id": { "type": "string" },
+        "owner_uid": { "type": "string" },
+        "title": { "type": "string", "maxLength": 300 },
+        "idea_notes": { "type": "string", "maxLength": 10000 },
+        "content_type": { "type": "string", "enum": ["long_form", "shorts"] },
+        "stage": { "type": "string", "enum": ["idea", "script", "voiceover", "thumbnail_edit", "seo", "posted"] },
+        "scheduled_date": { "type": "string" },
+        "posted_date": { "type": "string" },
+        "script_text": { "type": "string", "maxLength": 20000 },
+        "voiceover_status": { "type": "string" },
+        "thumbnail_checklist": { "type": "array" },
+        "seo": { "type": "object" },
+        "metrics": { "type": "object" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "title", "stage"]
+    },
+    "ContentTiktok": {
+      "title": "ContentTiktok",
+      "description": "TikTok content pipeline item",
+      "type": "object",
+      "properties": {
+        "content_id": { "type": "string" },
+        "owner_uid": { "type": "string" },
+        "title": { "type": "string", "maxLength": 300 },
+        "idea_notes": { "type": "string", "maxLength": 10000 },
+        "stage": { "type": "string", "enum": ["idea", "script", "posted"] },
+        "scheduled_date": { "type": "string" },
+        "posted_date": { "type": "string" },
+        "hook_text": { "type": "string", "maxLength": 2000 },
+        "script_body": { "type": "string", "maxLength": 10000 },
+        "voiceover_status": { "type": "string" },
+        "trending_sound_note": { "type": "string", "maxLength": 1000 },
+        "metrics": { "type": "object" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "title", "stage"]
+    },
+    "ContentFacebook": {
+      "title": "ContentFacebook",
+      "description": "Facebook content pipeline item",
+      "type": "object",
+      "properties": {
+        "content_id": { "type": "string" },
+        "owner_uid": { "type": "string" },
+        "title": { "type": "string", "maxLength": 300 },
+        "idea_notes": { "type": "string", "maxLength": 10000 },
+        "content_format": { "type": "string", "enum": ["text_post", "link_post", "video_post"] },
+        "stage": { "type": "string", "enum": ["idea", "draft", "posted"] },
+        "scheduled_date": { "type": "string" },
+        "posted_date": { "type": "string" },
+        "draft_text": { "type": "string", "maxLength": 10000 },
+        "ai_hook_suggestions": { "type": "string", "maxLength": 5000 },
+        "ai_best_time_suggestion": { "type": "string", "maxLength": 1000 },
+        "community_reply_note": { "type": "string", "maxLength": 2000 },
+        "metrics": { "type": "object" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "title", "stage"]
+    },
+    "ContentInstagram": {
+      "title": "ContentInstagram",
+      "description": "Instagram content pipeline item",
+      "type": "object",
+      "properties": {
+        "content_id": { "type": "string" },
+        "owner_uid": { "type": "string" },
+        "title": { "type": "string", "maxLength": 300 },
+        "idea_notes": { "type": "string", "maxLength": 10000 },
+        "content_format": { "type": "string", "enum": ["feed_post", "reel", "story"] },
+        "stage": { "type": "string" },
+        "scheduled_date": { "type": "string" },
+        "posted_date": { "type": "string" },
+        "script_text": { "type": "string", "maxLength": 10000 },
+        "caption_text": { "type": "string", "maxLength": 5000 },
+        "voiceover_status": { "type": "string" },
+        "ai_caption_hashtag_suggestions": { "type": "string", "maxLength": 5000 },
+        "metrics": { "type": "object" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "title", "stage"]
+    },
+    "VaultFolder": {
+      "title": "VaultFolder",
+      "description": "Folder or sub-group for vault organization",
+      "type": "object",
+      "properties": {
+        "owner_uid": { "type": "string" },
+        "section": { "type": "string", "enum": ["credentials", "bank_cards", "custom"] },
+        "folder_name": { "type": "string", "maxLength": 100 },
+        "parent_folder_id": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "section", "folder_name"]
+    },
+    "VaultCredential": {
+      "title": "VaultCredential",
+      "description": "Encrypted credentials entry",
+      "type": "object",
+      "properties": {
+        "owner_uid": { "type": "string" },
+        "folder_id": { "type": "string" },
+        "entry_name": { "type": "string", "maxLength": 200 },
+        "username_email": { "type": "string", "maxLength": 500 },
+        "encrypted_password": { "type": "string", "maxLength": 2000 },
+        "website_url": { "type": "string", "maxLength": 1000 },
+        "notes": { "type": "string", "maxLength": 5000 },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "entry_name"]
+    },
+    "VaultBankCard": {
+      "title": "VaultBankCard",
+      "description": "Encrypted bank or card entry",
+      "type": "object",
+      "properties": {
+        "owner_uid": { "type": "string" },
+        "folder_id": { "type": "string" },
+        "entry_type": { "type": "string", "enum": ["bank", "card", "both"] },
+        "label": { "type": "string", "maxLength": 200 },
+        "card_nickname": { "type": "string", "maxLength": 200 },
+        "card_type": { "type": "string" },
+        "cardholder_name": { "type": "string", "maxLength": 200 },
+        "encrypted_card_number": { "type": "string", "maxLength": 2000 },
+        "encrypted_cvv": { "type": "string", "maxLength": 1000 },
+        "expiry_date": { "type": "string", "maxLength": 50 },
+        "bank_name": { "type": "string", "maxLength": 200 },
+        "account_holder_name": { "type": "string", "maxLength": 200 },
+        "encrypted_account_number": { "type": "string", "maxLength": 2000 },
+        "additional_info": { "type": "string", "maxLength": 10000 },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "entry_type", "label"]
+    },
+    "VaultCustom": {
+      "title": "VaultCustom",
+      "description": "Encrypted custom vault item",
+      "type": "object",
+      "properties": {
+        "owner_uid": { "type": "string" },
+        "folder_id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 200 },
+        "encrypted_data": { "type": "string", "maxLength": 20000 },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "title", "encrypted_data"]
+    },
+    "FinancialEntry": {
+      "title": "FinancialEntry",
+      "description": "Income, expense, or recurring entry in BDT",
+      "type": "object",
+      "properties": {
+        "owner_uid": { "type": "string" },
+        "entry_type": { "type": "string", "enum": ["income", "expense", "recurring"] },
+        "category": { "type": "string", "maxLength": 100 },
+        "amount_bdt": { "type": "number" },
+        "date": { "type": "string" },
+        "is_recurring": { "type": "boolean" },
+        "recurrence_frequency": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "created_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "entry_type", "amount_bdt", "date"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Category budget limit for a month in BDT",
+      "type": "object",
+      "properties": {
+        "owner_uid": { "type": "string" },
+        "category": { "type": "string", "maxLength": 100 },
+        "monthly_limit_bdt": { "type": "number" },
+        "month": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "category", "monthly_limit_bdt", "month"]
+    },
+    "SavingsGoal": {
+      "title": "SavingsGoal",
+      "description": "Savings goal in BDT",
+      "type": "object",
+      "properties": {
+        "owner_uid": { "type": "string" },
+        "goal_name": { "type": "string", "maxLength": 150 },
+        "target_amount_bdt": { "type": "number" },
+        "current_amount_bdt": { "type": "number" },
+        "target_date": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "goal_name", "target_amount_bdt"]
+    },
+    "FinancialCalculation": {
+      "title": "FinancialCalculation",
+      "description": "Rough salary and expense estimation scenarios and calculation history",
+      "type": "object",
+      "properties": {
+        "owner_uid": { "type": "string" },
+        "title": { "type": "string" },
+        "period": { "type": "string", "enum": ["monthly", "annual"] },
+        "income_items": { "type": "array" },
+        "deduction_items": { "type": "array" },
+        "expense_items": { "type": "array" },
+        "gross_income_bdt": { "type": "number" },
+        "total_deductions_bdt": { "type": "number" },
+        "net_income_bdt": { "type": "number" },
+        "total_expenses_bdt": { "type": "number" },
+        "net_surplus_bdt": { "type": "number" },
+        "savings_rate_pct": { "type": "number" },
+        "notes": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "title"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User preferences and security settings",
+      "type": "object",
+      "properties": {
+        "owner_uid": { "type": "string" },
+        "theme": { "type": "string" },
+        "bypass_security_locks": { "type": "boolean" },
+        "display_currencies": { "type": "array" },
+        "vault_pin_hash": { "type": "string" },
+        "vault_pin_salt": { "type": "string" },
+        "posting_gap_thresholds": { "type": "object" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid"]
+    },
+    "DailyTask": {
+      "title": "DailyTask",
+      "description": "Recurring daily task with timer, completion tracking, and notes",
+      "type": "object",
+      "properties": {
+        "task_id": { "type": "string" },
+        "owner_uid": { "type": "string" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "notes": { "type": "string" },
+        "created_at": { "type": "string" },
+        "last_completed_at": { "type": "string" },
+        "all_time_total_minutes": { "type": "number" },
+        "subtasks": { "type": "array" }
+      },
+      "required": ["owner_uid", "title"]
+    },
+    "DailyTaskSession": {
+      "title": "DailyTaskSession",
+      "description": "Individual work timer session logged for a daily task",
+      "type": "object",
+      "properties": {
+        "session_id": { "type": "string" },
+        "task_id": { "type": "string" },
+        "owner_uid": { "type": "string" },
+        "date": { "type": "string" },
+        "start_time": { "type": "string" },
+        "end_time": { "type": "string" },
+        "duration_minutes": { "type": "number" }
+      },
+      "required": ["owner_uid", "task_id", "date"]
+    },
+    "WorkThread": {
+      "title": "WorkThread",
+      "description": "Context and state tracking thread for active work sessions",
+      "type": "object",
+      "properties": {
+        "thread_id": { "type": "string" },
+        "owner_uid": { "type": "string" },
+        "site_or_app_name": { "type": "string" },
+        "account_used": { "type": "string" },
+        "status": { "type": "string", "enum": ["in_progress", "paused", "done"] },
+        "notes": { "type": "string" },
+        "left_off_notes": { "type": "string" },
+        "link_url": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "status"]
+    },
+    "IdeaFolder": {
+      "title": "IdeaFolder",
+      "description": "Folder and sub-group organization for ideas and notes",
+      "type": "object",
+      "properties": {
+        "folder_id": { "type": "string" },
+        "owner_uid": { "type": "string" },
+        "folder_name": { "type": "string" },
+        "parent_folder_id": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "folder_name"]
+    },
+    "IdeaNote": {
+      "title": "IdeaNote",
+      "description": "Quick-captured or organized note with body, optional title, and folder assignment",
+      "type": "object",
+      "properties": {
+        "note_id": { "type": "string" },
+        "owner_uid": { "type": "string" },
+        "folder_id": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_uid", "body"]
+    }
+  },
+  "firestore": {
+    "/content_categories/{docId}": {
+      "schema": "ContentCategory",
+      "description": "Content category organization"
+    },
+    "/content_items/{docId}": {
+      "schema": "ContentItem",
+      "description": "Format-based content items"
+    },
+    "/content_youtube/{docId}": {
+      "schema": "ContentYoutube",
+      "description": "YouTube pipeline content"
+    },
+    "/content_tiktok/{docId}": {
+      "schema": "ContentTiktok",
+      "description": "TikTok pipeline content"
+    },
+    "/content_facebook/{docId}": {
+      "schema": "ContentFacebook",
+      "description": "Facebook pipeline content"
+    },
+    "/content_instagram/{docId}": {
+      "schema": "ContentInstagram",
+      "description": "Instagram pipeline content"
+    },
+    "/vault_folders/{docId}": {
+      "schema": "VaultFolder",
+      "description": "Vault folder and sub-group organization"
+    },
+    "/vault_credentials/{docId}": {
+      "schema": "VaultCredential",
+      "description": "Encrypted credential items"
+    },
+    "/vault_bank_cards/{docId}": {
+      "schema": "VaultBankCard",
+      "description": "Encrypted bank and cards items"
+    },
+    "/vault_custom/{docId}": {
+      "schema": "VaultCustom",
+      "description": "Encrypted custom items"
+    },
+    "/financial_entries/{docId}": {
+      "schema": "FinancialEntry",
+      "description": "Financial income, expenses, and recurring items"
+    },
+    "/budgets/{docId}": {
+      "schema": "Budget",
+      "description": "Monthly category budgets"
+    },
+    "/savings_goals/{docId}": {
+      "schema": "SavingsGoal",
+      "description": "Savings goals"
+    },
+    "/financial_calculations/{docId}": {
+      "schema": "FinancialCalculation",
+      "description": "Salary and expense rough calculation history and scenarios"
+    },
+    "/daily_tasks/{docId}": {
+      "schema": "DailyTask",
+      "description": "Recurring daily tasks"
+    },
+    "/daily_task_sessions/{docId}": {
+      "schema": "DailyTaskSession",
+      "description": "Daily task timer work sessions"
+    },
+    "/work_threads/{docId}": {
+      "schema": "WorkThread",
+      "description": "Context and state tracking work threads"
+    },
+    "/idea_folders/{docId}": {
+      "schema": "IdeaFolder",
+      "description": "Idea folder and sub-group organization"
+    },
+    "/idea_notes/{docId}": {
+      "schema": "IdeaNote",
+      "description": "Idea and knowledge notes"
+    },
+    "/user_settings/{userId}": {
+      "schema": "UserSettings",
+      "description": "User preferences and vault credentials status"
+    }
+  }
+}
