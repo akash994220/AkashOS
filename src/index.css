@@ -1,0 +1,699 @@
+@import "tailwindcss";
+
+/* =========================================================================
+   CUSTOM SCRIPT & TYPOGRAPHY SYSTEM
+   - English & Counting Numbers: Poppins (with tabular-nums for numeric precision)
+   - Bangla: Anek Bangla
+   - Arabic / IndoPak: Noorehuda / IndoPak
+   ========================================================================= */
+
+@font-face {
+  font-family: 'Noorehuda';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/noorehuda.woff2') format('woff2'),
+       url('/fonts/noorehuda.ttf') format('truetype'),
+       url('https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/fonts/noorehuda.woff2') format('woff2');
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF, U+1EE00-1EEFF;
+}
+
+@font-face {
+  font-family: 'IndoPak';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/noorehuda.woff2') format('woff2'),
+       url('/fonts/noorehuda.ttf') format('truetype');
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+@font-face {
+  font-family: 'Anek Bangla';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/anek-bangla-regular.ttf') format('truetype'),
+       url('https://fonts.gstatic.com/s/anekbangla/v16/_gPW1R38qTExHg-17BhM6n66QhabMYB0fBKONtHhRSIUIre5mq3Ofm9ZIoc.ttf') format('truetype');
+  unicode-range: U+0980-09FF, U+200C-200D;
+}
+
+@font-face {
+  font-family: 'Anek Bangla';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('/fonts/anek-bangla-bold.ttf') format('truetype'),
+       url('https://fonts.gstatic.com/s/anekbangla/v16/_gPW1R38qTExHg-17BhM6n66QhabMYB0fBKONtHhRSIUIre5mq3OfoheIoc.ttf') format('truetype');
+  unicode-range: U+0980-09FF, U+200C-200D;
+}
+
+@theme {
+  --font-sans: 'Poppins', 'Anek Bangla', 'Noorehuda', 'IndoPak', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-mono: 'Poppins', 'Anek Bangla', 'Noorehuda', 'IndoPak', system-ui, sans-serif;
+  --font-poppins: 'Poppins', system-ui, sans-serif;
+  --font-bangla: 'Anek Bangla', 'Poppins', sans-serif;
+  --font-arabic: 'Noorehuda', 'IndoPak', 'Traditional Arabic', serif;
+
+  /* Modern subtle ambient shadow scale */
+  --shadow-2xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-xs: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.03);
+  --shadow-sm: 0 2px 6px -1px rgba(15, 23, 42, 0.05), 0 1px 3px 0 rgba(15, 23, 42, 0.03);
+  --shadow-md: 0 4px 14px -2px rgba(15, 23, 42, 0.07), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 25px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 20px 35px -6px rgba(15, 23, 42, 0.10), 0 8px 16px -4px rgba(15, 23, 42, 0.05);
+}
+
+@layer base {
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --card-subtle-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 2px 8px -1px rgba(15, 23, 42, 0.05);
+    --card-subtle-shadow-hover: 0 4px 14px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+    --box-subtle-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+  }
+
+  body, button, input, select, textarea {
+    font-family: 'Poppins', 'Anek Bangla', 'Noorehuda', 'IndoPak', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Ensure all counting numbers, stopwatches, timers, and numeric badges use Poppins with tabular-nums */
+.font-mono,
+.tabular-nums,
+[data-timer],
+.timer-count {
+  font-family: 'Poppins', 'Anek Bangla', 'Noorehuda', 'IndoPak', system-ui, sans-serif !important;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' on, 'lnum' on;
+}
+
+/* Specific script utility classes */
+.font-bangla,
+[lang="bn"] {
+  font-family: 'Anek Bangla', 'Poppins', sans-serif !important;
+}
+
+.font-arabic,
+.font-indopak,
+.font-noorehuda,
+[lang="ar"],
+[dir="rtl"] {
+  font-family: 'Noorehuda', 'IndoPak', 'Traditional Arabic', serif !important;
+}
+
+.font-poppins,
+.font-english {
+  font-family: 'Poppins', system-ui, sans-serif !important;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera when specifically requested */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox when specifically requested */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* =========================================================================
+   CUSTOM SLEEK SCROLLBAR SYSTEM
+   Modern, slim, rounded pill thumb with invisible floating track
+   ========================================================================= */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Standard modern Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.40) transparent;
+}
+
+/* WebKit (Chrome, Edge, Safari, Opera, iOS) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.40);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.75);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: rgba(71, 85, 105, 0.95);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Glassmorphism, Floating Glass & Liquid Wallpaper Theme Scrollbar: Frosted Translucent Pill */
+[data-theme="glassmorphism"] *,
+[data-theme="floating_glass"] *,
+[data-theme="liquid_wallpaper"] * {
+  scrollbar-color: rgba(255, 255, 255, 0.65) transparent;
+}
+
+[data-theme="glassmorphism"] ::-webkit-scrollbar-thumb,
+[data-theme="floating_glass"] ::-webkit-scrollbar-thumb,
+[data-theme="liquid_wallpaper"] ::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.55);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  background-clip: padding-box;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="glassmorphism"] ::-webkit-scrollbar-thumb:hover,
+[data-theme="floating_glass"] ::-webkit-scrollbar-thumb:hover,
+[data-theme="liquid_wallpaper"] ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.95);
+}
+
+/* Dark Themes: Midnight & Cyberpunk */
+[data-theme="midnight"] *,
+[data-theme="cyberpunk"] * {
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+[data-theme="midnight"] ::-webkit-scrollbar-thumb,
+[data-theme="cyberpunk"] ::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.35);
+}
+
+[data-theme="midnight"] ::-webkit-scrollbar-thumb:hover,
+[data-theme="cyberpunk"] ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(203, 213, 225, 0.65);
+}
+
+/* =========================================================================
+   UNIVERSAL SUBTLE SHADOW SYSTEM FOR ALL CARDS AND BOXES
+   Provides clean, modern, ambient depth across all containers, cards, and panels
+   ========================================================================= */
+
+/* 1. Primary Cards & Content Containers across all views (Home, Content, Workspace, Tasks, Threads, Notes, Financial, Vault, Analytics, Settings) */
+div.bg-white[class*="border"],
+div.bg-white[class*="rounded"],
+div[style*="background-color: #FFFFFF"][class*="border"],
+div[style*="background-color: #ffffff"][class*="border"],
+div[style*="background-color: rgb(255, 255, 255)"][class*="border"],
+div[style*="background-color: rgba(255, 255, 255"][class*="border"],
+div[style*="background-color: var(--bg-card)"][class*="border"],
+div[style*="background-color: #FFFFFF"][class*="rounded"],
+div[style*="background-color: #ffffff"][class*="rounded"],
+div[style*="background-color: rgb(255, 255, 255)"][class*="rounded"],
+div[style*="background-color: var(--bg-card)"][class*="rounded"],
+form[class*="border"][class*="rounded"],
+section[class*="border"][class*="rounded"] {
+  box-shadow: var(--card-subtle-shadow, 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 2px 8px -1px rgba(15, 23, 42, 0.05));
+  transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+}
+
+/* 2. Interactive Card Hover Elevation */
+div.bg-white[class*="border"].cursor-pointer:hover,
+div[style*="background-color: #FFFFFF"][class*="border"].cursor-pointer:hover,
+div[style*="background-color: #ffffff"][class*="border"].cursor-pointer:hover,
+div[style*="background-color: rgb(255, 255, 255)"][class*="border"].cursor-pointer:hover,
+div[style*="background-color: var(--bg-card)"][class*="border"].cursor-pointer:hover,
+div[class*="hover:shadow"]:hover,
+div[class*="hover:border-zinc-400"].cursor-pointer:hover {
+  box-shadow: var(--card-subtle-shadow-hover, 0 4px 14px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04));
+}
+
+/* 3. Inset / Secondary Boxes & Search Bars (Crisp Tactile Depth) */
+div.bg-zinc-50[class*="border"][class*="rounded"],
+div.bg-zinc-50\/80[class*="border"][class*="rounded"],
+div.bg-zinc-50\/70[class*="border"][class*="rounded"],
+div.bg-slate-50[class*="border"][class*="rounded"],
+div[style*="background-color: rgb(244, 244, 245)"][class*="border"],
+div[style*="background-color: var(--bg-secondary)"][class*="border"] {
+  box-shadow: var(--box-subtle-shadow, 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02));
+}
+
+/* 4. Exclusions: Never force card shadows onto small text controls, badges, or dialog overlays */
+input, textarea, select, button, [role="tooltip"], .modal-backdrop, .no-shadow {
+  box-shadow: revert;
+}
+
+/* =========================================================================
+   GLASSMORPHISM THEME - SUBTLE ANIMATED MESH & HIGH-CONTRAST FROSTED PANELS
+   Clean, glitch-free, high-legibility acrylic glass surfaces
+   ========================================================================= */
+
+@keyframes meshShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+[data-theme="glassmorphism"] {
+  background: linear-gradient(-45deg, #e2e8f0, #e0e7ff, #f3e8ff, #fce7f3, #e0f2fe, #e2e8f0);
+  background-size: 400% 400%;
+  animation: meshShift 25s ease infinite;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+[data-theme="glassmorphism"] body {
+  background-color: transparent !important;
+}
+
+/* 1. Frosted Glass Primary Cards & Surfaces (Dynamically adapts to transparency toggle) */
+[data-theme="glassmorphism"] .bg-white {
+  background-color: var(--glass-card-bg, rgba(255, 255, 255, 0.88)) !important;
+  backdrop-filter: blur(var(--glass-card-blur, 16px)) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-card-blur, 16px)) saturate(140%) !important;
+  border-color: var(--glass-border, rgba(255, 255, 255, 0.90)) !important;
+  box-shadow: 
+    0 4px 20px -2px rgba(0, 0, 0, 0.05),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 1) !important;
+}
+
+/* 2. Secondary Inset Panels & Section Containers */
+[data-theme="glassmorphism"] .bg-zinc-50,
+[data-theme="glassmorphism"] .bg-zinc-50\/50,
+[data-theme="glassmorphism"] .bg-zinc-50\/60,
+[data-theme="glassmorphism"] .bg-zinc-50\/80,
+[data-theme="glassmorphism"] .bg-zinc-100,
+[data-theme="glassmorphism"] .bg-zinc-100\/50,
+[data-theme="glassmorphism"] .bg-zinc-100\/60,
+[data-theme="glassmorphism"] .bg-zinc-100\/80,
+[data-theme="glassmorphism"] .bg-zinc-100\/90,
+[data-theme="glassmorphism"] .bg-zinc-200,
+[data-theme="glassmorphism"] .bg-zinc-200\/70,
+[data-theme="glassmorphism"] .bg-zinc-200\/80 {
+  background-color: var(--glass-panel-bg, rgba(248, 250, 252, 0.82)) !important;
+  border-color: var(--glass-border, rgba(226, 232, 240, 0.80)) !important;
+}
+
+/* 3. Subtle Dividers & Outlines */
+[data-theme="glassmorphism"] .border-black\/4,
+[data-theme="glassmorphism"] .border-black\/5,
+[data-theme="glassmorphism"] .border-zinc-100,
+[data-theme="glassmorphism"] .border-zinc-200,
+[data-theme="glassmorphism"] .border-zinc-300,
+[data-theme="glassmorphism"] .divide-zinc-100 > :not([hidden]) ~ :not([hidden]),
+[data-theme="glassmorphism"] .divide-zinc-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--glass-border, rgba(226, 232, 240, 0.80)) !important;
+}
+
+/* 4. Desktop Sidebar */
+[data-theme="glassmorphism"] aside {
+  background-color: var(--glass-sidebar-bg, rgba(255, 255, 255, 0.85)) !important;
+  backdrop-filter: blur(var(--glass-blur-heavy, 20px)) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-heavy, 20px)) saturate(150%) !important;
+  border-right: 1px solid var(--glass-border, rgba(255, 255, 255, 0.90)) !important;
+  box-shadow: 2px 0 20px 0 rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 5. Top Header */
+[data-theme="glassmorphism"] header {
+  background-color: var(--glass-header-bg, rgba(255, 255, 255, 0.88)) !important;
+  backdrop-filter: blur(var(--glass-blur-heavy, 20px)) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-heavy, 20px)) saturate(150%) !important;
+  border-bottom: 1px solid var(--glass-border, rgba(255, 255, 255, 0.90)) !important;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+/* 6. Floating Mobile Navigation Capsule */
+[data-theme="glassmorphism"] nav[aria-label="Mobile Navigation"] {
+  background-color: var(--glass-nav-bg, rgba(255, 255, 255, 0.92)) !important;
+  backdrop-filter: blur(var(--glass-blur-nav, 24px)) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-nav, 24px)) saturate(160%) !important;
+  border: 1px solid var(--glass-border-strong, rgba(255, 255, 255, 1)) !important;
+  box-shadow: 
+    0 12px 32px -4px rgba(0, 0, 0, 0.12),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 1) !important;
+}
+
+/* 7. Inputs, Search Bars, Textareas & Selects (Solid & Crisp for flawless typing) */
+[data-theme="glassmorphism"] input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent):not([class*="bg-transparent"]):not([class*="border-b"]),
+[data-theme="glassmorphism"] textarea:not(.bg-transparent):not([class*="bg-transparent"]),
+[data-theme="glassmorphism"] select {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(203, 213, 225, 0.85) !important;
+  border-radius: 0.875rem !important;
+  color: #0F172A !important;
+}
+
+[data-theme="glassmorphism"] input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent):not([class*="bg-transparent"]):not([class*="border-b"]):focus,
+[data-theme="glassmorphism"] textarea:not(.bg-transparent):not([class*="bg-transparent"]):focus,
+[data-theme="glassmorphism"] select:focus {
+  background-color: #FFFFFF !important;
+  border-color: #3B82F6 !important;
+  border-radius: 0.875rem !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
+}
+
+/* 8. Dark Primary Buttons (Solid Contrast with clean hover) */
+[data-theme="glassmorphism"] .bg-zinc-900,
+[data-theme="glassmorphism"] .bg-zinc-800 {
+  background-color: #0F172A !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 8px 0 rgba(15, 23, 42, 0.15) !important;
+}
+
+[data-theme="glassmorphism"] .bg-zinc-900:hover,
+[data-theme="glassmorphism"] .bg-zinc-800:hover {
+  background-color: #1E293B !important;
+}
+
+/* 9. Modals, Bottom Sheets & Overlay Dialogs */
+[data-theme="glassmorphism"] .fixed.inset-0.z-50 > div[class*="bg-white"],
+[data-theme="glassmorphism"] [role="dialog"],
+[data-theme="glassmorphism"] .modal-content,
+[data-theme="glassmorphism"] div[class*="rounded-t-[28px]"] {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(24px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+  border: 1px solid rgba(255, 255, 255, 1) !important;
+  box-shadow: 
+    0 24px 48px -12px rgba(0, 0, 0, 0.18),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 1) !important;
+}
+
+/* 10. Hover states across lists and tables */
+[data-theme="glassmorphism"] .hover\:bg-zinc-50:hover,
+[data-theme="glassmorphism"] .hover\:bg-zinc-50\/50:hover,
+[data-theme="glassmorphism"] .hover\:bg-zinc-50\/80:hover,
+[data-theme="glassmorphism"] .hover\:bg-zinc-100:hover,
+[data-theme="glassmorphism"] .hover\:bg-zinc-200:hover,
+[data-theme="glassmorphism"] tr.hover\:bg-zinc-50:hover {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* ==========================================================================
+   FLOATING GLASS THEME
+   Frosted translucent capsules, floating navigation pills, layered depth,
+   soft multi-tier shadows, and rounded-2xl geometry.
+   ========================================================================== */
+
+[data-theme="floating_glass"] {
+  background: 
+    radial-gradient(circle at 18% 18%, rgba(219, 234, 254, 0.85), transparent 45%),
+    radial-gradient(circle at 82% 16%, rgba(243, 232, 255, 0.80), transparent 42%),
+    radial-gradient(circle at 50% 84%, rgba(224, 242, 254, 0.80), transparent 50%),
+    #F1F5F9;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+[data-theme="floating_glass"] body {
+  background-color: transparent !important;
+}
+
+/* Low-opacity translucent fills + heavy backdrop blur + rounded-2xl corners (Dynamically adapts to transparency toggle) */
+[data-theme="floating_glass"] .bg-white {
+  background-color: var(--glass-card-bg, rgba(255, 255, 255, 0.72)) !important;
+  backdrop-filter: blur(var(--glass-card-blur, 20px)) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-card-blur, 20px)) saturate(160%) !important;
+  border-radius: 1.25rem !important;
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.75)) !important;
+  box-shadow: 
+    0 12px 32px -4px rgba(15, 23, 42, 0.08),
+    0 4px 12px -2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Secondary Panels & Container Insets */
+[data-theme="floating_glass"] .bg-zinc-50,
+[data-theme="floating_glass"] .bg-zinc-50\/50,
+[data-theme="floating_glass"] .bg-zinc-50\/60,
+[data-theme="floating_glass"] .bg-zinc-50\/80,
+[data-theme="floating_glass"] .bg-zinc-100,
+[data-theme="floating_glass"] .bg-zinc-100\/50,
+[data-theme="floating_glass"] .bg-zinc-100\/60,
+[data-theme="floating_glass"] .bg-zinc-100\/80,
+[data-theme="floating_glass"] .bg-zinc-100\/90,
+[data-theme="floating_glass"] .bg-zinc-200,
+[data-theme="floating_glass"] .bg-zinc-200\/70,
+[data-theme="floating_glass"] .bg-zinc-200\/80,
+[data-theme="liquid_wallpaper"] .bg-zinc-50,
+[data-theme="liquid_wallpaper"] .bg-zinc-50\/50,
+[data-theme="liquid_wallpaper"] .bg-zinc-50\/60,
+[data-theme="liquid_wallpaper"] .bg-zinc-50\/80,
+[data-theme="liquid_wallpaper"] .bg-zinc-100,
+[data-theme="liquid_wallpaper"] .bg-zinc-100\/50,
+[data-theme="liquid_wallpaper"] .bg-zinc-100\/60,
+[data-theme="liquid_wallpaper"] .bg-zinc-100\/80,
+[data-theme="liquid_wallpaper"] .bg-zinc-100\/90,
+[data-theme="liquid_wallpaper"] .bg-zinc-200,
+[data-theme="liquid_wallpaper"] .bg-zinc-200\/70,
+[data-theme="liquid_wallpaper"] .bg-zinc-200\/80 {
+  background-color: var(--glass-panel-bg, rgba(248, 250, 252, 0.65)) !important;
+  backdrop-filter: blur(var(--glass-card-blur, 16px)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-card-blur, 16px)) !important;
+  border-radius: 1rem !important;
+  border-color: var(--glass-border, rgba(226, 232, 240, 0.65)) !important;
+}
+
+/* Soft luminous borders instead of hard lines */
+[data-theme="floating_glass"] .border-black\/4,
+[data-theme="floating_glass"] .border-black\/5,
+[data-theme="floating_glass"] .border-zinc-100,
+[data-theme="floating_glass"] .border-zinc-200,
+[data-theme="floating_glass"] .border-zinc-300,
+[data-theme="floating_glass"] .divide-zinc-100 > :not([hidden]) ~ :not([hidden]),
+[data-theme="floating_glass"] .divide-zinc-200 > :not([hidden]) ~ :not([hidden]),
+[data-theme="liquid_wallpaper"] .border-black\/4,
+[data-theme="liquid_wallpaper"] .border-black\/5,
+[data-theme="liquid_wallpaper"] .border-zinc-100,
+[data-theme="liquid_wallpaper"] .border-zinc-200,
+[data-theme="liquid_wallpaper"] .border-zinc-300,
+[data-theme="liquid_wallpaper"] .divide-zinc-100 > :not([hidden]) ~ :not([hidden]),
+[data-theme="liquid_wallpaper"] .divide-zinc-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--glass-border, rgba(255, 255, 255, 0.65)) !important;
+}
+
+/* Desktop Sidebar in Floating Glass & Liquid Wallpaper */
+[data-theme="floating_glass"] aside,
+[data-theme="liquid_wallpaper"] aside {
+  background-color: var(--glass-sidebar-bg, rgba(255, 255, 255, 0.70)) !important;
+  backdrop-filter: blur(var(--glass-blur-heavy, 24px)) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-heavy, 24px)) saturate(160%) !important;
+  border-right: 1px solid var(--glass-border, rgba(255, 255, 255, 0.75)) !important;
+  box-shadow: 4px 0 24px 0 rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Header in Floating Glass & Liquid Wallpaper */
+[data-theme="floating_glass"] header,
+[data-theme="liquid_wallpaper"] header {
+  background-color: var(--glass-header-bg, rgba(255, 255, 255, 0.72)) !important;
+  backdrop-filter: blur(var(--glass-blur-heavy, 24px)) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-heavy, 24px)) saturate(160%) !important;
+  border-bottom: 1px solid var(--glass-border, rgba(255, 255, 255, 0.75)) !important;
+  box-shadow: 0 4px 20px 0 rgba(15, 23, 42, 0.03) !important;
+}
+
+/* Inputs, Textareas & Controls */
+[data-theme="floating_glass"] input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent):not([class*="bg-transparent"]):not([class*="border-b"]),
+[data-theme="floating_glass"] textarea:not(.bg-transparent):not([class*="bg-transparent"]),
+[data-theme="floating_glass"] select,
+[data-theme="liquid_wallpaper"] input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent):not([class*="bg-transparent"]):not([class*="border-b"]),
+[data-theme="liquid_wallpaper"] textarea:not(.bg-transparent):not([class*="bg-transparent"]),
+[data-theme="liquid_wallpaper"] select {
+  background-color: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(203, 213, 225, 0.75) !important;
+  border-radius: 0.875rem !important;
+  color: #0F172A !important;
+}
+
+[data-theme="floating_glass"] input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent):not([class*="bg-transparent"]):not([class*="border-b"]):focus,
+[data-theme="floating_glass"] textarea:not(.bg-transparent):not([class*="bg-transparent"]):focus,
+[data-theme="floating_glass"] select:focus,
+[data-theme="liquid_wallpaper"] input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent):not([class*="bg-transparent"]):not([class*="border-b"]):focus,
+[data-theme="liquid_wallpaper"] textarea:not(.bg-transparent):not([class*="bg-transparent"]):focus,
+[data-theme="liquid_wallpaper"] select:focus {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #2563EB !important;
+  border-radius: 0.875rem !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18) !important;
+}
+
+/* ==========================================================================
+   LIQUID WALLPAPER THEME (Custom Wallpaper + Edge-Refraction Liquid Glass)
+   ========================================================================== */
+
+[data-theme="liquid_wallpaper"] {
+  background-image: var(--liquid-wallpaper-bg, radial-gradient(circle at 18% 18%, rgba(219, 234, 254, 0.95), transparent 45%), radial-gradient(circle at 82% 16%, rgba(243, 232, 255, 0.90), transparent 42%), radial-gradient(circle at 50% 84%, rgba(224, 242, 254, 0.90), transparent 50%), #E2E8F0);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+[data-theme="liquid_wallpaper"] body {
+  background-color: transparent !important;
+}
+
+/* Base Glass Cards */
+[data-theme="liquid_wallpaper"] .bg-white {
+  background-color: var(--glass-card-bg, rgba(255, 255, 255, 0.78)) !important;
+  backdrop-filter: var(--liquid-card-backdrop, blur(var(--glass-card-blur, 18px)) saturate(160%)) !important;
+  -webkit-backdrop-filter: var(--liquid-card-backdrop, blur(var(--glass-card-blur, 18px)) saturate(160%)) !important;
+  border-radius: 1.25rem !important;
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.75)) !important;
+  box-shadow: 
+    0 12px 32px -4px rgba(15, 23, 42, 0.08),
+    0 4px 12px -2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Edge-refraction distortion on top-level glass surfaces: Bottom Nav Capsule, Modals & Top-level Cards */
+[data-theme="liquid_wallpaper"] nav[aria-label="Mobile Navigation"],
+[data-theme="liquid_wallpaper"] .modal-surface,
+[data-theme="liquid_wallpaper"] .top-level-card,
+[data-theme="liquid_wallpaper"] div[role="dialog"] > div:not(.modal-backdrop) {
+  backdrop-filter: var(--liquid-surface-backdrop, blur(var(--glass-blur-nav, 24px)) saturate(160%)) !important;
+  -webkit-backdrop-filter: var(--liquid-surface-backdrop, blur(var(--glass-blur-nav, 24px)) saturate(160%)) !important;
+}
+
+/* Seamless transparent inputs, textareas & titles: NEVER force 4-sided borders, outlines or solid backgrounds */
+input.bg-transparent,
+textarea.bg-transparent,
+input[class*="bg-transparent"],
+textarea[class*="bg-transparent"] {
+  background-color: transparent !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+input.bg-transparent:focus,
+textarea.bg-transparent:focus,
+input[class*="bg-transparent"]:focus,
+textarea[class*="bg-transparent"]:focus {
+  background-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ==========================================================================
+   UNIVERSAL ELEVATED OVERLAY & MODAL DEFENSE (All Sectors & All Themes)
+   Prevents background text bleed-through with soft frosted aesthetics; NO sharp edges
+   ========================================================================== */
+
+/* 1. Universal Backdrop Scrim: Soft ambient defocus dims and blurs background clutter */
+.modal-backdrop,
+[data-modal-backdrop="true"],
+.fixed.inset-0.z-50,
+.fixed.inset-0.z-60 {
+  background-color: rgba(15, 23, 42, 0.58) !important;
+  backdrop-filter: blur(20px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
+}
+
+/* 2. Modal Surface Geometry: Always smooth, generous rounded corners (24px) */
+.modal-surface,
+[data-modal-surface="true"],
+.fixed.inset-0.z-50 > div:not(.modal-backdrop):not([class*="bg-black"]):not([class*="backdrop-blur"]),
+.fixed.inset-0.z-60 > div:not(.modal-backdrop):not([class*="bg-black"]):not([class*="backdrop-blur"]) {
+  border-radius: 1.5rem !important;
+  overflow: hidden;
+  box-shadow: 
+    0 25px 50px -12px rgba(15, 23, 42, 0.25),
+    0 10px 20px -5px rgba(15, 23, 42, 0.10) !important;
+}
+
+div[class*="rounded-t-[28px]"] {
+  border-top-left-radius: 1.75rem !important;
+  border-top-right-radius: 1.75rem !important;
+}
+
+/* 3. Glass Themes Modal Polish: Luminous, frosted acrylic glass (NOT flat chalk white) */
+[data-theme="glassmorphism"] .fixed.inset-0.z-50 > div:not(.modal-backdrop):not([class*="bg-black"]):not([class*="backdrop-blur"]),
+[data-theme="floating_glass"] .fixed.inset-0.z-50 > div:not(.modal-backdrop):not([class*="bg-black"]):not([class*="backdrop-blur"]),
+[data-theme="liquid_wallpaper"] .fixed.inset-0.z-50 > div:not(.modal-backdrop):not([class*="bg-black"]):not([class*="backdrop-blur"]),
+[data-theme="glassmorphism"] .modal-surface,
+[data-theme="floating_glass"] .modal-surface,
+[data-theme="liquid_wallpaper"] .modal-surface {
+  background-color: rgba(255, 255, 255, 0.86) !important;
+  backdrop-filter: blur(32px) saturate(175%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(175%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.90) !important;
+  border-radius: 1.5rem !important;
+  box-shadow: 
+    0 25px 50px -12px rgba(15, 23, 42, 0.22),
+    0 8px 24px -4px rgba(15, 23, 42, 0.08),
+    inset 0 1px 2px 0 rgba(255, 255, 255, 1) !important;
+}
+
+/* 4. Default / Solid Themes Modals */
+:not([data-theme="glassmorphism"]):not([data-theme="floating_glass"]):not([data-theme="liquid_wallpaper"]) .modal-surface,
+:not([data-theme="glassmorphism"]):not([data-theme="floating_glass"]):not([data-theme="liquid_wallpaper"]) .fixed.inset-0.z-50 > div:not(.modal-backdrop):not([class*="bg-black"]):not([class*="backdrop-blur"]) {
+  background-color: #FFFFFF !important;
+  border: 1px solid rgba(226, 232, 240, 0.90) !important;
+  border-radius: 1.5rem !important;
+}
+
+/* 5. Inner callouts and panels inside modals: smooth rounded corners, clean contrast */
+.fixed.inset-0.z-50 .bg-zinc-50,
+.fixed.inset-0.z-50 .bg-zinc-100,
+.fixed.inset-0.z-50 [class*="bg-zinc-50"],
+.fixed.inset-0.z-50 [class*="bg-zinc-100"],
+.modal-surface .bg-zinc-50,
+.modal-surface .bg-zinc-100,
+.modal-surface [class*="bg-zinc-50"],
+.modal-surface [class*="bg-zinc-100"] {
+  background-color: rgba(248, 250, 252, 0.90) !important;
+  border-color: rgba(226, 232, 240, 0.85) !important;
+  border-radius: 0.875rem !important;
+}
+
+/* List item hovers with smooth transition */
+[data-theme="floating_glass"] .hover\:bg-zinc-50:hover,
+[data-theme="floating_glass"] .hover\:bg-zinc-50\/50:hover,
+[data-theme="floating_glass"] .hover\:bg-zinc-50\/80:hover,
+[data-theme="floating_glass"] .hover\:bg-zinc-100:hover,
+[data-theme="floating_glass"] .hover\:bg-zinc-200:hover,
+[data-theme="floating_glass"] tr.hover\:bg-zinc-50:hover,
+[data-theme="liquid_wallpaper"] .hover\:bg-zinc-50:hover,
+[data-theme="liquid_wallpaper"] .hover\:bg-zinc-50\/50:hover,
+[data-theme="liquid_wallpaper"] .hover\:bg-zinc-50\/80:hover,
+[data-theme="liquid_wallpaper"] .hover\:bg-zinc-100:hover,
+[data-theme="liquid_wallpaper"] .hover\:bg-zinc-200:hover,
+[data-theme="liquid_wallpaper"] tr.hover\:bg-zinc-50:hover {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+

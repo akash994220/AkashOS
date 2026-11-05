@@ -1,0 +1,31 @@
+{
+  "id": "/",
+  "name": "Personal Productivity",
+  "short_name": "Productivity",
+  "description": "A minimalist personal productivity PWA with Content Creation pipelines, Financial tracking with BDT & foreign currency conversion, an encrypted Vault, and Settings.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FBFBFB",
+  "theme_color": "#FBFBFB",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

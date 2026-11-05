@@ -1,0 +1,6 @@
+{
+  "name": "AkashOS",
+  "description": "AkashOS is a personal productivity and studio operating system with Content Creation pipelines, Multi-currency Finance with BDT conversion, and a dedicated Workspace with Daily Tasks, Work Threads, and Ideas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
