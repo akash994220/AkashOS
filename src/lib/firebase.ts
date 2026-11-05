@@ -2,13 +2,23 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, initializeFirestore } from 'firebase/firestore';
 
+let appletConfig: Record<string, string> = {};
+try {
+  const configs = import.meta.glob('/firebase-applet-config.json', { eager: true });
+  if (configs['/firebase-applet-config.json']) {
+    appletConfig = (configs['/firebase-applet-config.json'] as any).default || configs['/firebase-applet-config.json'];
+  }
+} catch {
+  // No custom applet config found
+}
+
 export const firebaseConfig = {
-  apiKey: "AIzaSyB2RPjutKrDbxg7jHVBoFYrNs-P5qUXJ0M",
-  authDomain: "akash-app1999.firebaseapp.com",
-  projectId: "akash-app1999",
-  storageBucket: "akash-app1999.firebasestorage.app",
-  messagingSenderId: "1095711375254",
-  appId: "1:1095711375254:web:18a7915d77208af7ae67b7"
+  apiKey: appletConfig.apiKey || import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyB2RPjutKrDbxg7jHVBoFYrNs-P5qUXJ0M",
+  authDomain: appletConfig.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "akash-app1999.firebaseapp.com",
+  projectId: appletConfig.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID || "akash-app1999",
+  storageBucket: appletConfig.storageBucket || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "akash-app1999.firebasestorage.app",
+  messagingSenderId: appletConfig.messagingSenderId || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "1095711375254",
+  appId: appletConfig.appId || import.meta.env.VITE_FIREBASE_APP_ID || "1:1095711375254:web:18a7915d77208af7ae67b7"
 };
 
 // Initialize Firebase App safely
