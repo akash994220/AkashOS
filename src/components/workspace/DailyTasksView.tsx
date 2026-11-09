@@ -155,15 +155,16 @@ const SubtaskCapsulePill: React.FC<SubtaskCapsulePillProps> = ({
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: -16, scale: 0.94 }}
+      layout="position"
+      initial={{ opacity: 0, y: -22, scale: 0.92 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+      exit={{ opacity: 0, scale: 0.9, y: 12, transition: { duration: 0.16, ease: 'easeOut' } }}
       transition={{
+        layout: { type: 'spring', stiffness: 380, damping: 28, mass: 0.75 },
         type: 'spring',
         stiffness: 420,
-        damping: 30,
-        mass: 0.8,
+        damping: 28,
+        mass: 0.7,
       }}
       onClick={handleClick}
       style={{
@@ -349,7 +350,8 @@ export const DailyTasksView: React.FC = () => {
     return 1.0;
   });
 
-  // Draggable resize refs
+  // Draggable resize refs & state
+  const [isResizing, setIsResizing] = useState(false);
   const isDraggingResizeRef = useRef(false);
   const dragStartXRef = useRef(0);
   const dragStartWidthRef = useRef(540);
@@ -464,42 +466,57 @@ export const DailyTasksView: React.FC = () => {
     } catch {}
   };
 
-  // Draggable horizontal modal resize handler
+  // Butter-smooth draggable horizontal modal resize handler
   const handleStartResize = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
     isDraggingResizeRef.current = true;
+    setIsResizing(true);
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     dragStartXRef.current = clientX;
     dragStartWidthRef.current = modalWidth;
     document.body.style.cursor = 'ew-resize';
     document.body.style.userSelect = 'none';
 
+    let currentWidth = modalWidth;
+    let rafId: number | null = null;
+
     const onPointerMove = (ev: MouseEvent | TouchEvent) => {
       if (!isDraggingResizeRef.current) return;
       const currentX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX;
       const deltaX = currentX - dragStartXRef.current;
-      const maxWidth = Math.min(window.innerWidth - 32, 1000);
-      const newWidth = Math.max(420, Math.min(maxWidth, Math.round(dragStartWidthRef.current + deltaX)));
-      setModalWidth(newWidth);
-      try {
-        localStorage.setItem('daily_task_modal_width', newWidth.toString());
-      } catch {}
+      const availableWidth = window.innerWidth;
+      const maxAllowed = Math.min(1080, Math.max(500, availableWidth - (isSettingsOpen ? 370 : 64)));
+      const targetWidth = Math.max(420, Math.min(maxAllowed, Math.round(dragStartWidthRef.current + deltaX)));
+
+      if (targetWidth === currentWidth) return;
+      currentWidth = targetWidth;
+
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        setModalWidth(targetWidth);
+      });
     };
 
     const onPointerUp = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       isDraggingResizeRef.current = false;
+      setIsResizing(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       window.removeEventListener('mousemove', onPointerMove);
       window.removeEventListener('mouseup', onPointerUp);
       window.removeEventListener('touchmove', onPointerMove);
       window.removeEventListener('touchend', onPointerUp);
+
+      try {
+        localStorage.setItem('daily_task_modal_width', currentWidth.toString());
+      } catch {}
     };
 
-    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mousemove', onPointerMove, { passive: false });
     window.addEventListener('mouseup', onPointerUp);
-    window.addEventListener('touchmove', onPointerMove);
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
     window.addEventListener('touchend', onPointerUp);
   };
 
@@ -1217,14 +1234,16 @@ export const DailyTasksView: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
             className="flex items-start gap-3 max-w-[98vw] max-h-[94dvh] transition-all"
           >
-            {/* MAIN TASK POPUP (Width resizable via bottom-right drag handle) */}
+            {/* MAIN TASK POPUP WRAPPER (Resizable with outer curved handle) */}
             <div
               style={{
                 width: `${modalWidth}px`,
                 maxWidth: '92vw',
               }}
-              className="flex flex-col bg-white rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden relative max-h-[92dvh] shrink-0"
+              className="relative flex flex-col shrink-0 max-h-[92dvh]"
             >
+              {/* Inner Modal Card Container */}
+              <div className="flex flex-col flex-1 bg-white rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden relative">
               {/* Modal Header: Task Details + Settings Icon Button + Close */}
               <div className="px-5 py-3 border-b border-zinc-100 flex items-center justify-between shrink-0 bg-white">
                 <div className="flex items-center gap-2">
@@ -1301,9 +1320,9 @@ export const DailyTasksView: React.FC = () => {
                 </div>
               )}
 
-              {/* Mobile Settings View tab */}
-              {isSettingsOpen && activeMobileTab === 'settings' ? (
-                <div className="p-5 overflow-y-auto space-y-5 flex-1 md:hidden">
+              {/* Mobile Settings View tab (strictly mobile only when settings tab is active) */}
+              {isSettingsOpen && activeMobileTab === 'settings' && (
+                <div className="p-5 overflow-y-auto space-y-5 flex-1 block md:hidden">
                   {/* Settings Content for Mobile */}
                   <div className="space-y-4">
                     <div>
@@ -1396,9 +1415,14 @@ export const DailyTasksView: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              ) : (
-                /* Modal Body: Task Details */
-                <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              )}
+
+              {/* Modal Body: Task Details (ALWAYS rendered on desktop `md:flex`; on mobile rendered when settings closed or details tab active) */}
+              <div
+                className={`p-5 overflow-y-auto space-y-4 flex-1 ${
+                  isSettingsOpen && activeMobileTab === 'settings' ? 'hidden md:flex md:flex-col' : 'flex flex-col'
+                }`}
+              >
                   {/* Task Title Row: Borderless Bold Text + Invisible Hover Pen Button */}
                   <div className="relative">
                     {isEditingTitle ? (
@@ -1598,46 +1622,55 @@ export const DailyTasksView: React.FC = () => {
                     )}
                   </div>
                 </div>
-              )}
 
-              {/* Modal Footer: Delete & Done button */}
-              <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-between gap-3 shrink-0 bg-white shadow-xs">
-                <div>
-                  {editingTask && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleDeleteTask(editingTask.task_id, e)}
-                      className="px-3 py-1.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors font-medium min-h-[40px] flex items-center"
-                    >
-                      Delete Task
-                    </button>
-                  )}
+                {/* Modal Footer: Delete & Done button */}
+                <div className="px-5 py-3 border-t border-zinc-100 flex items-center justify-between gap-3 shrink-0 bg-white shadow-xs">
+                  <div>
+                    {editingTask && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteTask(editingTask.task_id, e)}
+                        className="px-3 py-1.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors font-medium min-h-[40px] flex items-center"
+                      >
+                        Delete Task
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      autoSaveTaskNow();
+                      setShowAddModal(false);
+                      setEditingTask(null);
+                      setIsSettingsOpen(false);
+                    }}
+                    className="px-5 py-2 text-xs font-bold bg-zinc-900 text-white rounded-xl hover:bg-zinc-800 cursor-pointer transition-colors flex items-center gap-1.5 shadow-xs min-h-[40px]"
+                  >
+                    <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Done</span>
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    autoSaveTaskNow();
-                    setShowAddModal(false);
-                    setEditingTask(null);
-                    setIsSettingsOpen(false);
-                  }}
-                  className="px-5 py-2 text-xs font-bold bg-zinc-900 text-white rounded-xl hover:bg-zinc-800 cursor-pointer transition-colors flex items-center gap-1.5 shadow-xs min-h-[40px]"
-                >
-                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Done</span>
-                </button>
               </div>
 
-              {/* Bottom-Right Corner Draggable Resize Handle */}
+              {/* CURVED PREMIUM DRAG & RESIZE HANDLE (Positioned OUTSIDE the popup with butter-smooth feel) */}
               <div
                 onMouseDown={handleStartResize}
                 onTouchStart={handleStartResize}
-                className="hidden sm:flex absolute bottom-1 right-1 w-6 h-6 items-end justify-end p-1 cursor-ew-resize select-none group/resize z-20"
-                title="Click and drag horizontally to resize popup width (saved for all tasks)"
+                className={`hidden sm:flex absolute -right-3.5 bottom-6 z-40 items-center justify-center cursor-ew-resize select-none transition-all group/resize-handle ${
+                  isResizing ? 'scale-110' : 'hover:scale-105 active:scale-95'
+                }`}
+                title="Drag horizontally to resize popup width (butter smooth)"
               >
-                <div className="w-3.5 h-3.5 border-r-2 border-b-2 border-zinc-400 group-hover/resize:border-zinc-900 transition-colors rounded-br-xs flex flex-col justify-end items-end pr-0.5 pb-0.5">
-                  <div className="w-1.5 h-1.5 border-r border-b border-zinc-400 group-hover/resize:border-zinc-900" />
+                <div
+                  className={`w-7 h-14 rounded-full flex flex-col items-center justify-center gap-1.5 transition-all shadow-xl backdrop-blur-md border ${
+                    isResizing
+                      ? 'bg-zinc-900 text-white border-zinc-900 ring-4 ring-zinc-900/15'
+                      : 'bg-white hover:bg-zinc-900 text-zinc-400 hover:text-white border-zinc-200/90 hover:border-zinc-900 shadow-md'
+                  }`}
+                >
+                  <div className="w-1 h-2.5 rounded-full bg-current opacity-70 group-hover/resize-handle:opacity-100 transition-opacity" />
+                  <div className="w-1 h-2.5 rounded-full bg-current opacity-70 group-hover/resize-handle:opacity-100 transition-opacity" />
                 </div>
               </div>
             </div>
