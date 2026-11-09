@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { useNavigation } from '../../context/NavigationContext';
@@ -13,7 +13,7 @@ import {
   deleteDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { WorkThread, ThreadNote } from '../../types/workspace';
+import { WorkThread, ThreadNote, CapsuleCategory } from '../../types/workspace';
 import { formatDateTimeWithHM } from '../../lib/threadTimer';
 import {
   GitBranch,
@@ -24,15 +24,20 @@ import {
   Search,
   Sparkles,
   X,
-  GripVertical,
   ChevronRight,
   Edit3,
   Sliders,
   AlertTriangle,
   Link2,
+  Rocket,
+  Lightbulb,
+  FileText,
+  Layers,
+  Palette,
+  ExternalLink,
 } from 'lucide-react';
 import { LinkWithPreview } from '../common/LinkWithPreview';
-import { tokenizeTextWithLinks, extractAllLinks } from '../../lib/linkUtils';
+import { extractAllLinks } from '../../lib/linkUtils';
 
 // ==========================================
 // MILDLY COLORFUL PALETTES (NO OUTLINES, SOFT TOTAL TINT)
@@ -163,12 +168,10 @@ const getNotePalette = (note: ThreadNote, index: number): SoftCapsulePalette => 
     const found = MILD_PALETTES.find((c) => c.id === note.color);
     if (found) return found;
   }
-  if (note.cmyk_color) {
-    if (note.cmyk_color === 'cyan') return MILD_PALETTES[1];
-    if (note.cmyk_color === 'magenta') return MILD_PALETTES[3];
-    if (note.cmyk_color === 'yellow') return MILD_PALETTES[4];
-    if (note.cmyk_color === 'key') return MILD_PALETTES[7];
-  }
+  // Category default
+  if (note.category === 'update') return MILD_PALETTES[0]; // mint
+  if (note.category === 'idea') return MILD_PALETTES[1]; // sky
+  if (note.category === 'note') return MILD_PALETTES[2]; // lavender
   return MILD_PALETTES[index % MILD_PALETTES.length];
 };
 
@@ -184,43 +187,26 @@ export const WorkThreadsView: React.FC = () => {
   // Active Focused Thread (Opens the Popup Modal)
   const [focusedThreadId, setFocusedThreadId] = useState<string | null>(null);
 
-  // Active Selected Note inside the open Thread Popup
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
-
-  // Note editor form fields
-  const [noteTitleInput, setNoteTitleInput] = useState<string>('');
-  const [noteBodyInput, setNoteBodyInput] = useState<string>('');
-  const [noteColorInput, setNoteColorInput] = useState<string>('mint');
-
   // Search inside thread notes
   const [searchNoteQuery, setSearchNoteQuery] = useState('');
 
-  // Draggable Split Ratio (% of left note editor width vs. right capsules)
-  const [splitRatio, setSplitRatio] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('work_threads_split_ratio');
-      if (saved) {
-        const val = parseFloat(saved);
-        if (!isNaN(val) && val >= 30 && val <= 75) return val;
-      }
-    } catch {}
-    return 60; // 60% left editor, 40% right capsules
-  });
+  // Category filter inside open thread ('all' | 'update' | 'idea' | 'note')
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | CapsuleCategory>('all');
 
-  // Draggable Unlimited Flexible Capsule Scale (0.75x to 1.5x)
+  // Floating speed-dial button state
+  const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
+
+  // Draggable Unlimited Flexible Capsule Scale (0.75x to 1.45x)
   const [capsuleScale, setCapsuleScale] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('work_threads_capsule_scale');
       if (saved) {
         const val = parseFloat(saved);
-        if (!isNaN(val) && val >= 0.75 && val <= 1.5) return val;
+        if (!isNaN(val) && val >= 0.75 && val <= 1.45) return val;
       }
     } catch {}
     return 1.0;
   });
-
-  // Mobile layout tab inside popup: 'editor' | 'capsules'
-  const [popupMobileTab, setPopupMobileTab] = useState<'editor' | 'capsules'>('editor');
 
   // New Thread Modal & Edit Thread Title
   const [showNewThreadModal, setShowNewThreadModal] = useState(false);
@@ -233,25 +219,22 @@ export const WorkThreadsView: React.FC = () => {
   const [threadToDelete, setThreadToDelete] = useState<WorkThread | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
-  const [copiedNote, setCopiedNote] = useState(false);
-  const [saveIndicator, setSaveIndicator] = useState<string | null>(null);
+  // Copy feedback tracking
+  const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
 
-  // Refs for note textarea and live blue links overlay
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const noteOverlayRef = useRef<HTMLDivElement>(null);
-  const modalBodyRef = useRef<HTMLDivElement>(null);
-  const isDraggingSplitterRef = useRef<boolean>(false);
+  // Active newly created capsule id for auto-scrolling
+  const [highlightedCapsuleId, setHighlightedCapsuleId] = useState<string | null>(null);
 
-  const handleNoteBodyScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
-    if (noteOverlayRef.current) {
-      noteOverlayRef.current.scrollTop = e.currentTarget.scrollTop;
-      noteOverlayRef.current.scrollLeft = e.currentTarget.scrollLeft;
-    }
-  };
+  // Autosave status per capsule
+  const [saveStatusMap, setSaveStatusMap] = useState<Record<string, string>>({});
+
+  // Debounce refs map for capsules
+  const debounceTimersRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const modalScrollRef = useRef<HTMLDivElement>(null);
 
   // 1. Subscribe to Firestore Work Threads
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
     const qThreads = query(
       collection(db, 'work_threads'),
       where('owner_uid', '==', user.uid)
@@ -270,51 +253,13 @@ export const WorkThreadsView: React.FC = () => {
     return () => unsub();
   }, [user]);
 
-  // Handle Capsule Scale Changes (Unlimited flexible bar)
+  // Handle Capsule Scale Changes
   const handleScaleChange = (val: number) => {
-    const clamped = Math.max(0.75, Math.min(1.5, val));
+    const clamped = Math.max(0.75, Math.min(1.45, val));
     setCapsuleScale(clamped);
     try {
       localStorage.setItem('work_threads_capsule_scale', clamped.toString());
     } catch {}
-  };
-
-  // Draggable Splitter Handler
-  const handleStartSplitterDrag = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    isDraggingSplitterRef.current = true;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-
-    const onPointerMove = (ev: MouseEvent | TouchEvent) => {
-      if (!isDraggingSplitterRef.current || !modalBodyRef.current) return;
-      const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX;
-      const rect = modalBodyRef.current.getBoundingClientRect();
-      const currentWidth = rect.width;
-      if (currentWidth <= 0) return;
-
-      const rawRatio = ((clientX - rect.left) / currentWidth) * 100;
-      const clamped = Math.max(30, Math.min(75, Math.round(rawRatio)));
-      setSplitRatio(clamped);
-      try {
-        localStorage.setItem('work_threads_split_ratio', clamped.toString());
-      } catch {}
-    };
-
-    const onPointerUp = () => {
-      isDraggingSplitterRef.current = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      window.removeEventListener('mousemove', onPointerMove);
-      window.removeEventListener('mouseup', onPointerUp);
-      window.removeEventListener('touchmove', onPointerMove);
-      window.removeEventListener('touchend', onPointerUp);
-    };
-
-    window.addEventListener('mousemove', onPointerMove);
-    window.addEventListener('mouseup', onPointerUp);
-    window.addEventListener('touchmove', onPointerMove);
-    window.addEventListener('touchend', onPointerUp);
   };
 
   // Find currently open thread for the Popup
@@ -343,6 +288,20 @@ export const WorkThreadsView: React.FC = () => {
     );
   }, [threadNotes, searchNoteQuery]);
 
+  // 3 Categorized lists (Updates, Idea, Additional Note)
+  const updatesList = useMemo(() => {
+    return filteredNotes.filter((n) => n.category === 'update');
+  }, [filteredNotes]);
+
+  const ideaList = useMemo(() => {
+    return filteredNotes.filter((n) => n.category === 'idea');
+  }, [filteredNotes]);
+
+  const additionalNotesList = useMemo(() => {
+    // Legacy notes without category default to 'note'
+    return filteredNotes.filter((n) => n.category === 'note' || !n.category);
+  }, [filteredNotes]);
+
   // Filtered threads in the main grid
   const filteredThreads = useMemo(() => {
     if (!searchThreadQuery.trim()) return threads;
@@ -350,60 +309,24 @@ export const WorkThreadsView: React.FC = () => {
     return threads.filter((t) => (t.title || '').toLowerCase().includes(q));
   }, [threads, searchThreadQuery]);
 
-  // Detected links in current active note (both title & body)
-  const activeNoteDetectedLinks = useMemo(() => {
-    const combined = `${noteTitleInput} ${noteBodyInput}`;
-    return extractAllLinks(combined);
-  }, [noteTitleInput, noteBodyInput]);
-
-  // When focused thread changes, initialize active note
+  // When focused thread changes, initialize draft
   useEffect(() => {
     if (focusedThread) {
       setThreadTitleDraft(focusedThread.title || '');
       setEditingThreadTitle(false);
       setSearchNoteQuery('');
-      setPopupMobileTab('editor');
-
-      const notes = focusedThread.notes_list || [];
-      if (notes.length > 0) {
-        const newest = [...notes].sort((a, b) => {
-          const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
-          const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
-          return timeB - timeA;
-        })[0];
-        setActiveNoteId(newest.note_id);
-        setNoteTitleInput(newest.title || '');
-        setNoteBodyInput(newest.text || '');
-        const pal = getNotePalette(newest, 0);
-        setNoteColorInput(pal.id);
-      } else {
-        setActiveNoteId(null);
-        setNoteTitleInput('');
-        setNoteBodyInput('');
-        setNoteColorInput(MILD_PALETTES[0].id);
-      }
-    } else {
-      setActiveNoteId(null);
+      setActiveCategoryFilter('all');
+      setIsSpeedDialOpen(false);
     }
   }, [focusedThreadId]);
-
-  // Sync active note form when activeNoteId changes
-  useEffect(() => {
-    if (!focusedThread || !activeNoteId) return;
-    const notes = focusedThread.notes_list || [];
-    const idx = notes.findIndex((n) => n.note_id === activeNoteId);
-    const currentNote = notes[idx];
-    if (currentNote) {
-      setNoteTitleInput(currentNote.title || '');
-      setNoteBodyInput(currentNote.text || '');
-      const pal = getNotePalette(currentNote, idx >= 0 ? idx : 0);
-      setNoteColorInput(pal.id);
-    }
-  }, [activeNoteId, focusedThread]);
 
   // Register hardware/back button handler when modal/confirmation is open
   useEffect(() => {
     return registerBackHandler(() => {
+      if (isSpeedDialOpen) {
+        setIsSpeedDialOpen(false);
+        return true;
+      }
       if (noteToDelete) {
         setNoteToDelete(null);
         return true;
@@ -422,42 +345,48 @@ export const WorkThreadsView: React.FC = () => {
       }
       return false;
     });
-  }, [noteToDelete, threadToDelete, showNewThreadModal, focusedThreadId, registerBackHandler]);
+  }, [isSpeedDialOpen, noteToDelete, threadToDelete, showNewThreadModal, focusedThreadId, registerBackHandler]);
 
-  // Helper to persist note changes to Firestore
-  const saveNoteDebouncedRef = useRef<NodeJS.Timeout | null>(null);
+  // Dynamically computed styling properties based on the continuous drag scale bar
+  const computedCapsuleStyle = useMemo(() => {
+    const s = capsuleScale;
+    const padY = Math.round(14 * s);
+    const padX = Math.round(18 * s);
+    const radius = Math.round(20 * s);
+    const titlePx = Math.round(14 * s);
+    const bodyPx = Math.round(13 * s);
 
-  const persistCurrentNote = (
+    return {
+      padding: `${padY}px ${padX}px`,
+      borderRadius: `${radius}px`,
+      titleFontSize: `${titlePx}px`,
+      bodyFontSize: `${bodyPx}px`,
+    };
+  }, [capsuleScale]);
+
+  // Helper to persist capsule changes to Firestore
+  const persistCapsuleChange = useCallback((
     noteId: string,
-    title: string,
-    text: string,
-    colorId: string
+    updates: Partial<ThreadNote>
   ) => {
-    if (!focusedThread || !user) return;
+    if (!focusedThread || !user || !db) return;
     const threadDocId = focusedThread.id || focusedThread.thread_id;
-    // Freshest list from threads state
     const currentThread = threads.find((t) => (t.id || t.thread_id) === threadDocId);
     const existingList = currentThread?.notes_list || focusedThread.notes_list || [];
-
-    // Safety: If note was deleted while typing, do not revive it!
-    const noteExists = existingList.some((n) => (n.note_id || (n as any).id) === noteId);
-    if (!noteExists) return;
 
     const nowIso = new Date().toISOString();
     const updatedList = existingList.map((n) => {
       if ((n.note_id || (n as any).id) === noteId) {
         return {
           ...n,
-          title: title.trim(),
-          text,
-          color: colorId,
+          ...updates,
           updated_at: nowIso,
         };
       }
       return n;
     });
 
-    // Optimistically update threads state immediately
+    // Optimistically update threads state
     setThreads((prev) =>
       prev.map((t) => {
         if ((t.id || t.thread_id) === threadDocId) {
@@ -478,65 +407,111 @@ export const WorkThreadsView: React.FC = () => {
       handleFirestoreError(err, OperationType.UPDATE, `work_threads/${threadDocId}`);
     });
 
-    setSaveIndicator('Saved');
-    setTimeout(() => setSaveIndicator(null), 1800);
-  };
+    setSaveStatusMap((prev) => ({ ...prev, [noteId]: 'Saved' }));
+    setTimeout(() => {
+      setSaveStatusMap((prev) => {
+        const next = { ...prev };
+        delete next[noteId];
+        return next;
+      });
+    }, 1800);
+  }, [focusedThread, user, threads]);
 
-  // Handle note body change with fast typing
-  const handleBodyChange = (newBody: string) => {
-    setNoteBodyInput(newBody);
-    if (!activeNoteId) return;
-
-    if (saveNoteDebouncedRef.current) {
-      clearTimeout(saveNoteDebouncedRef.current);
+  // Change title with auto-save debounce
+  const handleNoteTitleInput = (noteId: string, title: string) => {
+    // Optimistically update local thread notes
+    if (focusedThread) {
+      const threadDocId = focusedThread.id || focusedThread.thread_id;
+      setThreads((prev) =>
+        prev.map((t) => {
+          if ((t.id || t.thread_id) === threadDocId) {
+            return {
+              ...t,
+              notes_list: (t.notes_list || []).map((n) =>
+                (n.note_id || (n as any).id) === noteId ? { ...n, title } : n
+              ),
+            };
+          }
+          return t;
+        })
+      );
     }
-    saveNoteDebouncedRef.current = setTimeout(() => {
-      persistCurrentNote(activeNoteId, noteTitleInput, newBody, noteColorInput);
+
+    if (debounceTimersRef.current[`title_${noteId}`]) {
+      clearTimeout(debounceTimersRef.current[`title_${noteId}`]);
+    }
+    debounceTimersRef.current[`title_${noteId}`] = setTimeout(() => {
+      persistCapsuleChange(noteId, { title });
     }, 400);
   };
 
-  // Handle note title change
-  const handleTitleChange = (newTitle: string) => {
-    setNoteTitleInput(newTitle);
-    if (!activeNoteId) return;
-
-    if (saveNoteDebouncedRef.current) {
-      clearTimeout(saveNoteDebouncedRef.current);
+  // Change body with auto-save debounce
+  const handleNoteTextInput = (noteId: string, text: string) => {
+    // Optimistically update local thread notes
+    if (focusedThread) {
+      const threadDocId = focusedThread.id || focusedThread.thread_id;
+      setThreads((prev) =>
+        prev.map((t) => {
+          if ((t.id || t.thread_id) === threadDocId) {
+            return {
+              ...t,
+              notes_list: (t.notes_list || []).map((n) =>
+                (n.note_id || (n as any).id) === noteId ? { ...n, text } : n
+              ),
+            };
+          }
+          return t;
+        })
+      );
     }
-    saveNoteDebouncedRef.current = setTimeout(() => {
-      persistCurrentNote(activeNoteId, newTitle, noteBodyInput, noteColorInput);
-    }, 400);
+
+    if (debounceTimersRef.current[`text_${noteId}`]) {
+      clearTimeout(debounceTimersRef.current[`text_${noteId}`]);
+    }
+    debounceTimersRef.current[`text_${noteId}`] = setTimeout(() => {
+      persistCapsuleChange(noteId, { text });
+    }, 450);
   };
 
-  // Handle changing note color
-  const handleColorChange = (newColorId: string) => {
-    setNoteColorInput(newColorId);
-    if (activeNoteId) {
-      persistCurrentNote(activeNoteId, noteTitleInput, noteBodyInput, newColorId);
+  // Instant save on blur
+  const handleCapsuleBlur = (note: ThreadNote) => {
+    const noteId = note.note_id || (note as any).id;
+    if (debounceTimersRef.current[`title_${noteId}`]) {
+      clearTimeout(debounceTimersRef.current[`title_${noteId}`]);
     }
+    if (debounceTimersRef.current[`text_${noteId}`]) {
+      clearTimeout(debounceTimersRef.current[`text_${noteId}`]);
+    }
+    persistCapsuleChange(noteId, { title: note.title, text: note.text });
   };
 
-  // Create a brand new Note inside focused thread (different mild color each time)
-  const handleCreateNote = async () => {
-    if (!focusedThread || !user) return;
+  // Change color tint
+  const handleCapsuleColorChange = (noteId: string, colorId: string) => {
+    persistCapsuleChange(noteId, { color: colorId });
+  };
+
+  // Create a new Capsule under specific Category (Updates, Idea, Additional Note)
+  const handleCreateCapsule = async (category: CapsuleCategory) => {
+    if (!focusedThread || !user || !db) return;
     const threadDocId = focusedThread.id || focusedThread.thread_id;
     const existingList = focusedThread.notes_list || [];
 
-    // Automatically pick the next vibrant mild color in rotation
-    const nextPalette = MILD_PALETTES[existingList.length % MILD_PALETTES.length];
     const newNoteId = `note_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const nowIso = new Date().toISOString();
 
+    const defaultColor = category === 'update' ? 'mint' : category === 'idea' ? 'sky' : 'lavender';
+
     const newNote: ThreadNote = {
       note_id: newNoteId,
+      category,
       title: '',
       text: '',
+      color: defaultColor,
       created_at: nowIso,
       updated_at: nowIso,
-      color: nextPalette.id,
     };
 
-    // Prepend so newest note is at the top
+    // Prepend so newest appears at the top of that category
     const updatedList = [newNote, ...existingList];
 
     try {
@@ -544,22 +519,68 @@ export const WorkThreadsView: React.FC = () => {
         notes_list: updatedList,
         updated_at: nowIso,
       });
-      setActiveNoteId(newNoteId);
-      setNoteTitleInput('');
-      setNoteBodyInput('');
-      setNoteColorInput(nextPalette.id);
-      setPopupMobileTab('editor');
+
+      setHighlightedCapsuleId(newNoteId);
+      setIsSpeedDialOpen(false);
+
+      // Scroll smoothly to the target category section
       setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 100);
+        const el = document.getElementById(`capsule-${newNoteId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const ta = el.querySelector('textarea');
+          if (ta) ta.focus();
+        }
+      }, 150);
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `work_threads/${threadDocId}`);
     }
   };
 
-  // Confirmed Delete Note Handler (executed after user confirms in Custom Modal UI)
+  // Global & In-Modal Keyboard Shortcuts Listener (Alt+U for Update, Alt+I for Idea, Alt+N for Note)
+  useEffect(() => {
+    if (!focusedThreadId) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Alt (Option on macOS)
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key.toLowerCase() === 'u') {
+          e.preventDefault();
+          handleCreateCapsule('update');
+        } else if (e.key.toLowerCase() === 'i') {
+          e.preventDefault();
+          handleCreateCapsule('idea');
+        } else if (e.key.toLowerCase() === 'n') {
+          e.preventDefault();
+          handleCreateCapsule('note');
+        }
+      }
+
+      if (e.key === 'Escape') {
+        if (isSpeedDialOpen) {
+          setIsSpeedDialOpen(false);
+        } else if (!noteToDelete && !threadToDelete && !showNewThreadModal) {
+          setFocusedThreadId(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusedThreadId, isSpeedDialOpen, noteToDelete, threadToDelete, showNewThreadModal, focusedThread, user]);
+
+  // Copy Capsule Text
+  const handleCopyCapsule = (note: ThreadNote) => {
+    const combined = note.title ? `${note.title}\n\n${note.text}` : note.text;
+    navigator.clipboard.writeText(combined);
+    const nId = note.note_id || (note as any).id;
+    setCopiedNoteId(nId);
+    setTimeout(() => setCopiedNoteId(null), 1800);
+  };
+
+  // Confirmed Delete Note Handler
   const handleConfirmDeleteNote = async () => {
-    if (!noteToDelete || !focusedThread || !user) return;
+    if (!noteToDelete || !focusedThread || !user || !db) return;
     const noteId = noteToDelete.note_id || (noteToDelete as any).id;
     const threadDocId = focusedThread.id || focusedThread.thread_id;
     const currentThread = threads.find((t) => (t.id || t.thread_id) === threadDocId);
@@ -569,15 +590,9 @@ export const WorkThreadsView: React.FC = () => {
     );
     const nowIso = new Date().toISOString();
 
-    // 1. Clear any pending debounced autosave immediately
-    if (saveNoteDebouncedRef.current) {
-      clearTimeout(saveNoteDebouncedRef.current);
-      saveNoteDebouncedRef.current = null;
-    }
-
     setIsDeleting(true);
 
-    // 2. Optimistic update to React state: note disappears instantly
+    // Optimistic update
     setThreads((prev) =>
       prev.map((t) => {
         if ((t.id || t.thread_id) === threadDocId) {
@@ -591,32 +606,8 @@ export const WorkThreadsView: React.FC = () => {
       })
     );
 
-    // 3. If active note was deleted, transition to next newest note or empty state
-    if (activeNoteId === noteId) {
-      if (updatedList.length > 0) {
-        const sorted = [...updatedList].sort((a, b) => {
-          const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
-          const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
-          return timeB - timeA;
-        });
-        const next = sorted[0];
-        const nextId = next.note_id || (next as any).id;
-        setActiveNoteId(nextId);
-        setNoteTitleInput(next.title || '');
-        setNoteBodyInput(next.text || '');
-        const pal = getNotePalette(next, 0);
-        setNoteColorInput(pal.id);
-      } else {
-        setActiveNoteId(null);
-        setNoteTitleInput('');
-        setNoteBodyInput('');
-      }
-    }
-
-    // 4. Close the confirmation modal
     setNoteToDelete(null);
 
-    // 5. Persist to Firestore
     try {
       await updateDoc(doc(db, 'work_threads', threadDocId), {
         notes_list: updatedList,
@@ -629,17 +620,17 @@ export const WorkThreadsView: React.FC = () => {
     }
   };
 
-  // Confirmed Delete Thread Handler (executed after user confirms in Custom Modal UI)
+  // Confirmed Delete Thread Handler
   const handleConfirmDeleteThread = async () => {
-    if (!threadToDelete || !user) return;
+    if (!threadToDelete || !user || !db) return;
     const threadDocId = threadToDelete.id || threadToDelete.thread_id;
     setIsDeleting(true);
 
-    // Optimistic removal from state
+    // Optimistic update
     setThreads((prev) => prev.filter((t) => (t.id || t.thread_id) !== threadDocId));
+
     if (focusedThreadId === threadDocId) {
       setFocusedThreadId(null);
-      setActiveNoteId(null);
     }
     setThreadToDelete(null);
 
@@ -652,57 +643,39 @@ export const WorkThreadsView: React.FC = () => {
     }
   };
 
-  // Copy note text to clipboard
-  const handleCopyNote = async () => {
-    const fullText = noteTitleInput ? `${noteTitleInput}\n\n${noteBodyInput}` : noteBodyInput;
-    if (!fullText.trim()) return;
-    try {
-      await navigator.clipboard.writeText(fullText);
-      setCopiedNote(true);
-      setTimeout(() => setCopiedNote(false), 1600);
-    } catch {}
-  };
-
-  // Create a new Thread from Main View
+  // Create New Thread
   const handleCreateThread = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newThreadTitle.trim()) return;
+    if (!newThreadTitle.trim() || !user || !db) return;
 
-    const threadId = `thread_${Date.now()}`;
+    const threadDocId = `thread_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const nowIso = new Date().toISOString();
 
-    const initialNote: ThreadNote = {
-      note_id: `note_${Date.now()}_1`,
-      title: 'First Thought',
-      text: 'Start typing your thoughts, notes, and ideas here...',
-      created_at: nowIso,
-      updated_at: nowIso,
-      color: MILD_PALETTES[0].id,
-    };
-
-    const payload: WorkThread = {
-      thread_id: threadId,
+    const newThread: WorkThread = {
+      id: threadDocId,
+      thread_id: threadDocId,
       owner_uid: user.uid,
       title: newThreadTitle.trim(),
-      notes_list: [initialNote],
       created_at: nowIso,
       updated_at: nowIso,
+      notes_list: [],
     };
 
     try {
-      await setDoc(doc(db, 'work_threads', threadId), payload);
+      await setDoc(doc(db, 'work_threads', threadDocId), newThread);
       setNewThreadTitle('');
       setShowNewThreadModal(false);
-      setFocusedThreadId(threadId);
+      setFocusedThreadId(threadDocId);
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, `work_threads/${threadId}`);
+      handleFirestoreError(err, OperationType.CREATE, 'work_threads');
     }
   };
 
-  // Save renamed thread title
+  // Save Thread Title
   const handleSaveThreadTitle = async () => {
-    if (!focusedThread || !user || !threadTitleDraft.trim()) return;
+    if (!focusedThread || !user || !db || !threadTitleDraft.trim()) return;
     const threadDocId = focusedThread.id || focusedThread.thread_id;
+
     try {
       await updateDoc(doc(db, 'work_threads', threadDocId), {
         title: threadTitleDraft.trim(),
@@ -714,34 +687,147 @@ export const WorkThreadsView: React.FC = () => {
     }
   };
 
-  // Dynamically computed styling properties based on the continuous drag scale bar
-  const computedCapsuleStyle = useMemo(() => {
-    const s = capsuleScale;
-    const padY = Math.round(12 * s);
-    const padX = Math.round(16 * s);
-    const radius = Math.round(22 * s);
-    const titlePx = Math.round(14 * s);
-    const bodyPx = Math.round(13 * s);
-    const lineClamp = s < 0.88 ? 2 : s > 1.25 ? 4 : 3;
+  // Render Capsule Chunk Card
+  const renderCapsuleCard = (note: ThreadNote, idx: number, category: CapsuleCategory) => {
+    const noteId = note.note_id || (note as any).id;
+    const palette = getNotePalette(note, idx);
+    const timeLabel = formatDateTimeWithHM(note.updated_at || note.created_at);
+    const detectedLinks = extractAllLinks(`${note.title || ''} ${note.text || ''}`);
+    const isCopied = copiedNoteId === noteId;
+    const saveStatus = saveStatusMap[noteId];
 
-    return {
-      padding: `${padY}px ${padX}px`,
-      borderRadius: `${radius}px`,
-      titleFontSize: `${titlePx}px`,
-      bodyFontSize: `${bodyPx}px`,
-      lineClampClass: lineClamp === 2 ? 'line-clamp-2' : lineClamp === 4 ? 'line-clamp-4' : 'line-clamp-3',
-    };
-  }, [capsuleScale]);
+    return (
+      <div
+        key={noteId}
+        id={`capsule-${noteId}`}
+        style={{
+          padding: computedCapsuleStyle.padding,
+          borderRadius: computedCapsuleStyle.borderRadius,
+          backgroundColor: palette.bgLight,
+          boxShadow: palette.glowShadow,
+        }}
+        className="relative group transition-all duration-200 border border-black/5 hover:border-black/10 flex flex-col space-y-2.5"
+      >
+        {/* Top Header of Capsule */}
+        <div className="flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span
+              style={{
+                backgroundColor: palette.accent,
+                boxShadow: `0 0 6px ${palette.accent}`,
+              }}
+              className="w-2.5 h-2.5 rounded-full shrink-0"
+            />
+            {/* Inline Capsule Title */}
+            <input
+              type="text"
+              value={note.title || ''}
+              onChange={(e) => handleNoteTitleInput(noteId, e.target.value)}
+              onBlur={() => handleCapsuleBlur(note)}
+              placeholder="Title (optional)..."
+              style={{
+                fontSize: computedCapsuleStyle.titleFontSize,
+                color: palette.textTitle,
+              }}
+              className="font-black bg-transparent border-b border-transparent hover:border-zinc-300 focus:border-zinc-900 focus:outline-none w-full min-w-0 py-0.5 transition-colors placeholder:text-zinc-400 placeholder:font-normal"
+            />
+          </div>
 
-  // Current active note object
-  const currentActiveNote = useMemo(() => {
-    return threadNotes.find((n) => n.note_id === activeNoteId) || null;
-  }, [threadNotes, activeNoteId]);
+          {/* Right Header Badges & Actions */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {saveStatus && (
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 animate-fade-in">
+                ✓ {saveStatus}
+              </span>
+            )}
+
+            <span className="text-[11px] font-medium text-zinc-400 tabular-nums hidden xs:inline">
+              {timeLabel}
+            </span>
+
+            {/* Mild Color Swatch Selector */}
+            <div className="flex items-center gap-1 bg-white/70 p-1 rounded-full border border-zinc-200/80">
+              {MILD_PALETTES.slice(0, 4).map((pal) => (
+                <button
+                  key={pal.id}
+                  type="button"
+                  onClick={() => handleCapsuleColorChange(noteId, pal.id)}
+                  style={{ backgroundColor: pal.accent }}
+                  className={`w-3.5 h-3.5 rounded-full transition-transform cursor-pointer ${
+                    (note.color || palette.id) === pal.id ? 'scale-125 ring-2 ring-white shadow-xs' : 'opacity-40 hover:opacity-100'
+                  }`}
+                  title={pal.name}
+                />
+              ))}
+            </div>
+
+            {/* Copy Button */}
+            <button
+              type="button"
+              onClick={() => handleCopyCapsule(note)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-white/90 transition-colors cursor-pointer"
+              title="Copy capsule content"
+            >
+              {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+
+            {/* Delete Button */}
+            <button
+              type="button"
+              onClick={() => setNoteToDelete(note)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+              title="Delete capsule"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Capsule Body: Native Textarea (Works 100% on Android keyboards!) */}
+        <textarea
+          value={note.text || ''}
+          onChange={(e) => handleNoteTextInput(noteId, e.target.value)}
+          onBlur={() => handleCapsuleBlur(note)}
+          placeholder={`Write what you want in this ${category === 'update' ? 'update' : category === 'idea' ? 'idea' : 'note'}...`}
+          style={{
+            fontSize: computedCapsuleStyle.bodyFontSize,
+            color: palette.textBody,
+          }}
+          className="w-full bg-transparent min-h-[72px] sm:min-h-[88px] resize-y font-sans font-medium leading-relaxed placeholder:text-zinc-400/80 focus:outline-none select-text touch-manipulation"
+          spellCheck={false}
+        />
+
+        {/* Detected Links Pill Bar (Bright blue, tappable, does not break typing) */}
+        {detectedLinks.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-black/5">
+            <span className="text-[10px] font-black uppercase text-blue-700 flex items-center gap-1">
+              <Link2 className="w-3 h-3 text-[#2563eb]" />
+              <span>Links:</span>
+            </span>
+            {detectedLinks.map((link) => (
+              <LinkWithPreview
+                key={link.id}
+                url={link.url}
+                domain={link.domain}
+                path={link.path}
+                variant="badge"
+                stopPropagation={true}
+              >
+                <span className="max-w-[200px] truncate text-[#2563eb] font-bold">
+                  {link.domain}{link.path ? link.path.slice(0, 16) : ''}
+                </span>
+              </LinkWithPreview>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 pb-24 md:pb-12 max-w-7xl mx-auto px-4 sm:px-6">
       {/* ========================================== */}
-      {/* MAIN VIEW: HEADER & SEARCH */}
+      {/* WORK THREADS TOP HEADER & SEARCH */}
       {/* ========================================== */}
       <div
         style={{
@@ -760,7 +846,7 @@ export const WorkThreadsView: React.FC = () => {
               Work Threads
             </h2>
             <p className="text-xs text-zinc-400 font-medium">
-              Click any thread box to open its contents and colorful capsule notes
+              Categorized 3-capsule workspace: Updates, Ideas, and Additional Notes
             </p>
           </div>
         </div>
@@ -790,7 +876,7 @@ export const WorkThreadsView: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowNewThreadModal(true)}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer shrink-0"
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer shrink-0 min-h-[44px]"
           >
             <Plus className="w-4 h-4" />
             <span>New Thread</span>
@@ -808,8 +894,9 @@ export const WorkThreadsView: React.FC = () => {
           const noteCount = notes.length;
           const updatedTime = formatDateTimeWithHM(thread.updated_at || thread.created_at);
 
-          // Get preview mild palettes from the notes inside
-          const colorPreviews = notes.slice(0, 5).map((n, idx) => getNotePalette(n, idx));
+          const upCount = notes.filter((n) => n.category === 'update').length;
+          const idCount = notes.filter((n) => n.category === 'idea').length;
+          const notCount = notes.filter((n) => n.category === 'note' || !n.category).length;
 
           return (
             <div
@@ -823,14 +910,14 @@ export const WorkThreadsView: React.FC = () => {
               className="p-5 border shadow-xs hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer group flex flex-col justify-between min-h-[195px] relative overflow-hidden"
             >
               <div className="space-y-3.5">
-                {/* Header: Title + Capsule Count + Custom UI Delete Trigger */}
+                {/* Header: Title + Capsule Count + Delete Trigger */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-0.5 min-w-0 flex-1">
                     <h3 className="text-sm font-bold text-zinc-900 group-hover:text-purple-600 transition-colors truncate">
                       {thread.title || 'Untitled Thread'}
                     </h3>
                     <p className="text-[11px] font-semibold text-zinc-400 tabular-nums">
-                      {noteCount} {noteCount === 1 ? 'capsule note' : 'capsule notes'}
+                      {noteCount} {noteCount === 1 ? 'capsule' : 'capsules'}
                     </p>
                   </div>
 
@@ -840,46 +927,38 @@ export const WorkThreadsView: React.FC = () => {
                       e.stopPropagation();
                       setThreadToDelete(thread);
                     }}
-                    className="p-1.5 rounded-lg text-zinc-300 hover:text-rose-600 hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer shrink-0"
+                    className="p-1.5 rounded-lg text-zinc-300 hover:text-rose-600 hover:bg-rose-50 transition-colors opacity-80 sm:opacity-0 group-hover:opacity-100 cursor-pointer shrink-0"
                     title="Delete thread"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                {/* Soft Color Swatch Halo Dots & Preview */}
-                {noteCount > 0 ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5">
-                      {colorPreviews.map((pal, idx) => (
-                        <span
-                          key={idx}
-                          style={{
-                            backgroundColor: pal.accent,
-                            boxShadow: `0 0 8px ${pal.accent}50`,
-                          }}
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          title={pal.name}
-                        />
-                      ))}
-                      {noteCount > 5 && (
-                        <span className="text-[10px] font-bold text-zinc-400 pl-0.5">
-                          +{noteCount - 5}
-                        </span>
-                      )}
-                    </div>
+                {/* 3 Capsule Category Badges Summary */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold">
+                    <Rocket className="w-2.5 h-2.5 text-emerald-600" />
+                    <span>{upCount} Updates</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-100 text-[10px] font-bold">
+                    <Lightbulb className="w-2.5 h-2.5 text-sky-600" />
+                    <span>{idCount} Ideas</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-100 text-[10px] font-bold">
+                    <FileText className="w-2.5 h-2.5 text-purple-600" />
+                    <span>{notCount} Notes</span>
+                  </span>
+                </div>
 
-                    {/* Preview of latest note snippet in bold */}
-                    {notes[0] && (
-                      <p className="text-xs font-bold text-zinc-600 line-clamp-2 leading-relaxed">
-                        {notes[0].title ? `${notes[0].title} — ` : ''}
-                        {notes[0].text.trim() || 'Empty note'}
-                      </p>
-                    )}
-                  </div>
+                {/* Preview of latest note snippet in bold */}
+                {notes[0] ? (
+                  <p className="text-xs font-bold text-zinc-600 line-clamp-2 leading-relaxed">
+                    {notes[0].title ? `${notes[0].title} — ` : ''}
+                    {notes[0].text.trim() || 'Empty capsule'}
+                  </p>
                 ) : (
                   <div className="p-3 rounded-xl bg-zinc-50 border border-dashed border-zinc-200 text-center text-xs font-semibold text-zinc-400">
-                    No notes yet. Click to add capsules!
+                    No capsules yet. Click to open & write!
                   </div>
                 )}
               </div>
@@ -904,7 +983,7 @@ export const WorkThreadsView: React.FC = () => {
             borderColor: theme.colors.borderLight,
             borderRadius: '1.5rem',
           }}
-          className="p-5 border-2 border-dashed hover:border-zinc-400 bg-zinc-50/50 hover:bg-zinc-50 transition-all cursor-pointer flex flex-col items-center justify-center text-center space-y-2 min-h-[195px] group"
+          className="p-5 border-2 border-dashed hover:border-zinc-400 bg-zinc-50/50 hover:bg-zinc-50 transition-all cursor-pointer flex flex-col items-center justify-center text-center space-y-2 min-h-[195px] group min-h-[44px]"
         >
           <div className="w-10 h-10 rounded-2xl bg-white text-zinc-400 group-hover:text-zinc-900 group-hover:scale-105 transition-all flex items-center justify-center border border-zinc-200 shadow-2xs">
             <Plus className="w-5 h-5" />
@@ -913,13 +992,13 @@ export const WorkThreadsView: React.FC = () => {
             Create New Thread
           </span>
           <span className="text-[11px] text-zinc-400 font-medium">
-            Start a new thread box with colorful capsules
+            Start a new thread with categorized capsules
           </span>
         </div>
       </div>
 
       {/* ====================================================================== */}
-      {/* POPUP MODAL: MAIN CONTENTS (NOTE CANVAS ON LEFT, CAPSULES ON RIGHT)   */}
+      {/* EXTENDED POPUP MODAL: 3 CATEGORIZED CAPSULE STYLE (UPDATES, IDEA, NOTE) */}
       {/* ====================================================================== */}
       {focusedThread && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 animate-in fade-in duration-200">
@@ -930,12 +1009,12 @@ export const WorkThreadsView: React.FC = () => {
               borderRadius: '1.75rem',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             }}
-            className="w-full max-w-6xl h-[92vh] max-h-[880px] border flex flex-col overflow-hidden shadow-2xl relative"
+            className="w-full max-w-5xl h-[94dvh] sm:h-[90vh] max-h-[920px] border flex flex-col overflow-hidden shadow-2xl relative"
           >
             {/* ========================================== */}
             {/* POPUP HEADER */}
             {/* ========================================== */}
-            <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center justify-between gap-3 shrink-0 bg-white">
+            <div className="px-4 sm:px-6 py-3.5 border-b border-zinc-100 flex items-center justify-between gap-3 shrink-0 bg-white">
               {/* Left: Thread Title (Click to edit) */}
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100 shrink-0">
@@ -988,20 +1067,17 @@ export const WorkThreadsView: React.FC = () => {
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
                     <span className="text-[11px] font-bold text-zinc-400 tabular-nums">
-                      · {threadNotes.length} notes
+                      · {threadNotes.length} capsules
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Right: Draggable Capsule Resizing Bar & Close Button */}
-              <div className="flex items-center gap-4 shrink-0">
-                {/* Draggable Fluid Capsule Resizing Bar */}
-                <div className="flex items-center gap-2 bg-zinc-100/80 px-3 py-1.5 rounded-xl border border-zinc-200">
-                  <span className="text-[10px] font-black uppercase text-zinc-500 tracking-wider flex items-center gap-1">
-                    <Sliders className="w-3 h-3 text-zinc-500" />
-                    <span className="hidden sm:inline">Capsule Zoom:</span>
-                  </span>
+              {/* Right: Capsule Zoom Scale & Close */}
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                {/* Capsule Zoom Bar */}
+                <div className="hidden sm:flex items-center gap-2 bg-zinc-100/80 px-2.5 py-1.5 rounded-xl border border-zinc-200">
+                  <Sliders className="w-3 h-3 text-zinc-500" />
                   <input
                     type="range"
                     min="0.75"
@@ -1009,7 +1085,7 @@ export const WorkThreadsView: React.FC = () => {
                     step="0.02"
                     value={capsuleScale}
                     onChange={(e) => handleScaleChange(parseFloat(e.target.value))}
-                    className="w-20 sm:w-28 h-1.5 bg-zinc-300 rounded-lg appearance-none cursor-pointer accent-zinc-900"
+                    className="w-16 sm:w-24 h-1.5 bg-zinc-300 rounded-lg appearance-none cursor-pointer accent-zinc-900"
                     title={`Capsule zoom scale: ${Math.round(capsuleScale * 100)}%`}
                   />
                   <span className="text-[10px] font-black text-zinc-700 tabular-nums w-8 text-right">
@@ -1039,480 +1115,321 @@ export const WorkThreadsView: React.FC = () => {
               </div>
             </div>
 
-            {/* Mobile Tab Toggle inside Popup */}
-            <div className="flex md:hidden items-center p-1 bg-zinc-100 border-b border-zinc-200 shrink-0">
-              <button
-                type="button"
-                onClick={() => setPopupMobileTab('editor')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  popupMobileTab === 'editor' ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500'
-                }`}
-              >
-                Note Editor
-              </button>
-              <button
-                type="button"
-                onClick={() => setPopupMobileTab('capsules')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  popupMobileTab === 'capsules' ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500'
-                }`}
-              >
-                Capsules ({threadNotes.length})
-              </button>
+            {/* ================================================================= */}
+            {/* SUBHEADER: CATEGORY JUMP / FILTER TABS + FAST CAPSULE SEARCH       */}
+            {/* ================================================================= */}
+            <div className="px-4 sm:px-6 py-2.5 bg-zinc-50 border-b border-zinc-200/80 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              {/* Category Filter Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveCategoryFilter('all')}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
+                    activeCategoryFilter === 'all'
+                      ? 'bg-zinc-900 text-white shadow-2xs'
+                      : 'bg-white text-zinc-600 hover:bg-zinc-100 border border-zinc-200'
+                  }`}
+                >
+                  <Layers className="w-3 h-3" />
+                  <span>All ({threadNotes.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveCategoryFilter('update')}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
+                    activeCategoryFilter === 'update'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                  }`}
+                >
+                  <Rocket className="w-3 h-3 text-emerald-700" />
+                  <span>Updates ({updatesList.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveCategoryFilter('idea')}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
+                    activeCategoryFilter === 'idea'
+                      ? 'bg-sky-600 text-white shadow-2xs'
+                      : 'bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-200'
+                  }`}
+                >
+                  <Lightbulb className="w-3 h-3 text-sky-700" />
+                  <span>Ideas ({ideaList.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveCategoryFilter('note')}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 min-h-[34px] ${
+                    activeCategoryFilter === 'note'
+                      ? 'bg-purple-600 text-white shadow-2xs'
+                      : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200'
+                  }`}
+                >
+                  <FileText className="w-3 h-3 text-purple-700" />
+                  <span>Notes ({additionalNotesList.length})</span>
+                </button>
+              </div>
+
+              {/* In-Thread Fast Search */}
+              <div className="relative w-full sm:w-56">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <input
+                  type="text"
+                  placeholder="Filter capsules..."
+                  value={searchNoteQuery}
+                  onChange={(e) => setSearchNoteQuery(e.target.value)}
+                  className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-zinc-200 rounded-xl focus:border-zinc-900 focus:outline-none transition-all placeholder:text-zinc-400 text-zinc-900 font-medium"
+                />
+                {searchNoteQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchNoteQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* ================================================================= */}
-            {/* POPUP MAIN BODY: DUAL PANE WITH FLEXIBLE DRAGGABLE DIVIDER        */}
-            {/* LEFT: NOTE WRITING CANVAS | RIGHT: CAPSULES STREAM                 */}
+            {/* MAIN SCROLLABLE BODY: 3 STACKED CATEGORIZED SECTIONS              */}
             {/* ================================================================= */}
             <div
-              ref={modalBodyRef}
-              className="flex-1 flex overflow-hidden relative select-auto bg-zinc-50/30"
+              ref={modalScrollRef}
+              className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-8 pb-32 bg-zinc-50/40 relative"
             >
-              {/* ========================================== */}
-              {/* LEFT PANE: NOTE WRITING CANVAS             */}
-              {/* ========================================== */}
-              <div
-                style={{
-                  width: `${splitRatio}%`,
-                }}
-                className={`flex flex-col h-full bg-white p-5 sm:p-6 overflow-hidden ${
-                  popupMobileTab === 'capsules' ? 'hidden md:flex' : 'flex'
-                }`}
-              >
-                {activeNoteId && currentActiveNote ? (
-                  <div className="flex-1 flex flex-col justify-between space-y-4 overflow-hidden">
-                    <div className="space-y-4 flex-1 flex flex-col overflow-hidden">
-                      {/* Note Header Toolbar */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-100 shrink-0">
-                        {/* Mild Color Swatch Selector */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                            Tint:
-                          </span>
-                          <div className="flex items-center gap-1.5 bg-zinc-50 p-1.5 rounded-full border border-zinc-200">
-                            {MILD_PALETTES.map((pal) => {
-                              const isChosen = noteColorInput === pal.id;
-                              return (
-                                <button
-                                  key={pal.id}
-                                  type="button"
-                                  onClick={() => handleColorChange(pal.id)}
-                                  style={{
-                                    backgroundColor: pal.accent,
-                                    boxShadow: isChosen ? `0 0 10px ${pal.accent}` : 'none',
-                                  }}
-                                  className={`w-4 h-4 rounded-full transition-transform cursor-pointer ${
-                                    isChosen ? 'scale-125 ring-2 ring-white ring-offset-1' : 'opacity-65 hover:opacity-100'
-                                  }`}
-                                  title={pal.name}
-                                />
-                              );
-                            })}
-                          </div>
-
-                          {/* Save Status Indicator */}
-                          {saveIndicator && (
-                            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                              ✓ {saveIndicator}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Right: Copy & Delete Actions with Custom UI Confirmation */}
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={handleCopyNote}
-                            disabled={!noteBodyInput.trim() && !noteTitleInput.trim()}
-                            className="px-3 py-1.5 text-xs font-bold rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
-                            title="Copy note text"
-                          >
-                            {copiedNote ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-zinc-500" />}
-                            <span className="hidden sm:inline">{copiedNote ? 'Copied' : 'Copy'}</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (currentActiveNote) {
-                                setNoteToDelete({
-                                  ...currentActiveNote,
-                                  title: noteTitleInput,
-                                  text: noteBodyInput,
-                                  color: noteColorInput,
-                                });
-                              } else if (activeNoteId) {
-                                setNoteToDelete({
-                                  note_id: activeNoteId,
-                                  title: noteTitleInput,
-                                  text: noteBodyInput,
-                                  created_at: new Date().toISOString(),
-                                  color: noteColorInput,
-                                });
-                              }
-                            }}
-                            disabled={!activeNoteId}
-                            className="px-3 py-1.5 text-xs font-bold rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
-                            title="Delete this capsule note"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 stroke-[2.2]" />
-                            <span className="hidden sm:inline">Delete</span>
-                          </button>
-                        </div>
+              {/* SECTION 1: UPDATES */}
+              {(activeCategoryFilter === 'all' || activeCategoryFilter === 'update') && (
+                <section id="section-updates" className="space-y-3">
+                  {/* Category Header Banner */}
+                  <div className="flex items-center justify-between pb-2 border-b border-emerald-200/60">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-2xs">
+                        <Rocket className="w-4 h-4" />
                       </div>
-
-                      {/* Optional Title Input */}
-                      <div className="shrink-0">
-                        <input
-                          type="text"
-                          value={noteTitleInput}
-                          onChange={(e) => handleTitleChange(e.target.value)}
-                          placeholder="Note title (optional)..."
-                          className="w-full bg-transparent text-xl sm:text-2xl font-black text-zinc-900 placeholder:text-zinc-300 focus:outline-none border-b border-transparent focus:border-zinc-200 pb-1.5 transition-colors"
-                        />
+                      <div>
+                        <h3 className="text-sm font-black text-emerald-950 uppercase tracking-wide">
+                          Updates
+                        </h3>
+                        <p className="text-[11px] text-emerald-700 font-medium hidden sm:block">
+                          Progress notes, milestones, changelogs & status reports
+                        </p>
                       </div>
-
-                      {/* Detected Links Quick Access Bar (Always visible whenever note contains links) */}
-                      {activeNoteDetectedLinks.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-blue-50/70 border border-blue-200/80 shrink-0">
-                          <div className="flex items-center gap-1 text-[10px] font-black text-blue-700 uppercase tracking-wider pl-1 pr-1 shrink-0">
-                            <Link2 className="w-3.5 h-3.5 text-[#2563eb]" />
-                            <span>Links ({activeNoteDetectedLinks.length}):</span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {activeNoteDetectedLinks.map((link) => (
-                              <LinkWithPreview
-                                key={link.id}
-                                url={link.url}
-                                domain={link.domain}
-                                path={link.path}
-                                variant="badge"
-                                stopPropagation={true}
-                              >
-                                <span className="max-w-[170px] truncate text-[#2563eb] font-bold">{link.domain}{link.path ? link.path.slice(0, 14) : ''}</span>
-                              </LinkWithPreview>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Live Interactive Note Typing Canvas (Links ALWAYS visible in bright blue & clickable) */}
-                      <div className="flex-1 relative min-h-0 w-full overflow-hidden">
-                        {/* Layer 1: Textarea for native typing, caret, and selection */}
-                        <textarea
-                          ref={textareaRef}
-                          value={noteBodyInput}
-                          onChange={(e) => handleBodyChange(e.target.value)}
-                          onScroll={handleNoteBodyScroll}
-                          placeholder="Type your thoughts freely. Links will automatically appear in bright blue..."
-                          className="absolute inset-0 w-full h-full p-2 bg-transparent text-sm sm:text-base leading-relaxed text-transparent caret-zinc-900 placeholder:text-zinc-300 focus:outline-none resize-none font-sans font-medium whitespace-pre-wrap break-words select-text selection:bg-blue-200/60 selection:text-transparent z-10"
-                          spellCheck={false}
-                        />
-
-                        {/* Layer 2: Real-time visual overlay (Regular text in zinc-800, Links in bright blue with hover preview & click) */}
-                        <div
-                          ref={noteOverlayRef}
-                          className="absolute inset-0 w-full h-full p-2 pointer-events-none overflow-hidden text-sm sm:text-base leading-relaxed font-sans font-medium whitespace-pre-wrap break-words z-20"
-                        >
-                          {noteBodyInput.length > 0 ? (
-                            <>
-                              {tokenizeTextWithLinks(noteBodyInput).map((token, i) =>
-                                token.type === 'link' && token.url ? (
-                                  <LinkWithPreview
-                                    key={`${token.url}-${i}`}
-                                    url={token.url}
-                                    domain={token.domain}
-                                    path={token.path}
-                                    variant="inline"
-                                    className="pointer-events-auto !text-[#2563eb] hover:!text-[#1d4ed8] font-bold !underline !decoration-[#3b82f6] hover:!decoration-[#1d4ed8] transition-all cursor-pointer"
-                                    stopPropagation={true}
-                                  >
-                                    {token.content}
-                                  </LinkWithPreview>
-                                ) : (
-                                  <span key={i} className="text-zinc-800">
-                                    {token.content}
-                                  </span>
-                                )
-                              )}
-                              {noteBodyInput.endsWith('\n') && <span className="invisible">&#8203;</span>}
-                            </>
-                          ) : (
-                            <span className="text-zinc-300 italic pointer-events-none select-none">
-                              Type your thoughts freely. Instant capture without formatting clutter...
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Footer Counts & Status */}
-                    <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-xs text-zinc-400 shrink-0">
-                      <span className="tabular-nums font-semibold">
-                        {noteBodyInput.trim().split(/\s+/).filter(Boolean).length} words • {noteBodyInput.length} chars
-                      </span>
-                      <span className="text-[11px] font-semibold text-zinc-400">
-                        Auto-saved in real-time
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/90 text-emerald-800 tabular-nums">
+                        {updatesList.length}
                       </span>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-zinc-400 space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-zinc-100 text-zinc-400 flex items-center justify-center">
-                      <Edit3 className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-base font-bold text-zinc-800">No Note Selected</h3>
-                    <p className="text-xs text-zinc-400 max-w-sm">
-                      Select a colorful capsule on the right or create a new note to start typing.
-                    </p>
+
                     <button
                       type="button"
-                      onClick={() => handleCreateNote()}
-                      className="px-4 py-2 rounded-full text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors shadow-2xs cursor-pointer"
-                    >
-                      + Create New Note
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* ====================================================================== */}
-              {/* DRAGGABLE DIVIDER SPLITTER (WITH BUTTON HANDLE TO RESIZE WIDTH RATIO)  */}
-              {/* ====================================================================== */}
-              <div
-                onMouseDown={handleStartSplitterDrag}
-                onTouchStart={handleStartSplitterDrag}
-                className="hidden md:flex relative items-center justify-center w-2 hover:w-2.5 bg-zinc-200 hover:bg-purple-400 active:bg-purple-600 transition-colors cursor-col-resize shrink-0 z-20 group select-none"
-                title="Drag to flexibly resize editor and capsules width ratio"
-              >
-                {/* Centered Small Draggable Button Handle */}
-                <div className="absolute top-1/2 -translate-y-1/2 w-5 h-9 rounded-full bg-white border border-zinc-300 group-hover:border-purple-400 shadow-md flex items-center justify-center cursor-col-resize transition-transform group-hover:scale-105 active:scale-95">
-                  <GripVertical className="w-3 h-3 text-zinc-400 group-hover:text-purple-600" />
-                </div>
-              </div>
-
-              {/* ========================================== */}
-              {/* RIGHT PANE: CAPSULES STREAM (MILDLY COLORFUL, NO OUTLINES) */}
-              {/* ========================================== */}
-              <div
-                style={{
-                  width: `${100 - splitRatio}%`,
-                }}
-                className={`flex flex-col h-full bg-zinc-50/50 overflow-hidden ${
-                  popupMobileTab === 'editor' ? 'hidden md:flex' : 'flex w-full md:w-auto'
-                }`}
-              >
-                {/* Search & Fast Add Note CTA */}
-                <div className="p-3.5 border-b border-zinc-200/80 space-y-2.5 shrink-0 bg-white/70 backdrop-blur-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-zinc-800 uppercase tracking-wider">
-                      Capsules
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleCreateNote()}
-                      className="px-3 py-1 rounded-full text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
-                      title="Add new colorful capsule note"
+                      onClick={() => handleCreateCapsule('update')}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1.5 shadow-xs cursor-pointer min-h-[36px]"
+                      title="Add Update (Shortcut: Alt+U)"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>Note</span>
+                      <span>Add Update</span>
+                      <kbd className="hidden sm:inline px-1 py-0.2 text-[9px] bg-emerald-800/40 rounded font-mono">
+                        Alt+U
+                      </kbd>
                     </button>
                   </div>
 
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                    <input
-                      type="text"
-                      placeholder="Search capsules..."
-                      value={searchNoteQuery}
-                      onChange={(e) => setSearchNoteQuery(e.target.value)}
-                      className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-zinc-200 rounded-xl focus:border-zinc-900 focus:outline-none transition-all placeholder:text-zinc-400 text-zinc-900 font-medium"
-                    />
-                    {searchNoteQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchNoteQuery('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Vertical Stream of Mildly Colorful Capsules */}
-                <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
-                  {filteredNotes.length === 0 ? (
-                    <div className="p-8 text-center text-zinc-400 space-y-2 border border-dashed border-zinc-200 rounded-2xl bg-white/50">
-                      <Sparkles className="w-6 h-6 text-zinc-300 mx-auto" />
-                      <p className="text-xs font-bold text-zinc-600">No capsules found</p>
-                      <p className="text-[11px] text-zinc-400">
-                        {searchNoteQuery ? 'Try another search term' : 'Click "+ Note" to capture your thoughts!'}
-                      </p>
-                      {!searchNoteQuery && (
-                        <button
-                          type="button"
-                          onClick={() => handleCreateNote()}
-                          className="mt-2 px-3 py-1.5 rounded-full text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors cursor-pointer"
-                        >
-                          Create First Capsule
-                        </button>
-                      )}
+                  {/* List of Update Capsules */}
+                  {updatesList.length > 0 ? (
+                    <div className="space-y-3">
+                      {updatesList.map((note, idx) => renderCapsuleCard(note, idx, 'update'))}
                     </div>
                   ) : (
-                    filteredNotes.map((note, idx) => {
-                      const isActive = note.note_id === activeNoteId;
-                      const palette = getNotePalette(note, idx);
-                      const timeLabel = formatDateTimeWithHM(note.updated_at || note.created_at);
-
-                      return (
-                        <div
-                          key={note.note_id}
-                          onClick={() => {
-                            setActiveNoteId(note.note_id);
-                            setPopupMobileTab('editor');
-                          }}
-                          style={{
-                            padding: computedCapsuleStyle.padding,
-                            borderRadius: computedCapsuleStyle.borderRadius,
-                            border: 'none',
-                            outline: 'none',
-                            backgroundColor: isActive ? palette.bgActive : palette.bgLight,
-                            boxShadow: isActive ? palette.activeGlow : palette.glowShadow,
-                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                          }}
-                          className={`cursor-pointer relative overflow-hidden group select-none ${
-                            isActive ? 'scale-[1.01]' : 'hover:scale-[1.008]'
-                          }`}
-                        >
-                          <div className="space-y-1.5">
-                            {/* Top Row: Radiant Dot + Bold Title + Time + Direct Delete Trigger */}
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span
-                                  style={{
-                                    backgroundColor: palette.accent,
-                                    boxShadow: `0 0 6px ${palette.accent}`,
-                                  }}
-                                  className="w-2 h-2 rounded-full shrink-0"
-                                />
-
-                                {/* Note Title in BOLD (with links support) */}
-                                {note.title ? (
-                                  <h4
-                                    style={{
-                                      fontSize: computedCapsuleStyle.titleFontSize,
-                                      color: palette.textTitle,
-                                    }}
-                                    className="font-black truncate tracking-tight"
-                                  >
-                                    {tokenizeTextWithLinks(note.title).map((token, i) =>
-                                      token.type === 'link' && token.url ? (
-                                        <LinkWithPreview
-                                          key={`${token.url}-${i}`}
-                                          url={token.url}
-                                          domain={token.domain}
-                                          path={token.path}
-                                          variant="capsule"
-                                          className="!text-[#2563eb] hover:!text-[#1d4ed8] font-black !underline !decoration-[#3b82f6]"
-                                          stopPropagation={true}
-                                        >
-                                          {token.content}
-                                        </LinkWithPreview>
-                                      ) : (
-                                        <React.Fragment key={i}>{token.content}</React.Fragment>
-                                      )
-                                    )}
-                                  </h4>
-                                ) : (
-                                  <span
-                                    style={{
-                                      fontSize: computedCapsuleStyle.titleFontSize,
-                                      color: palette.textMuted,
-                                    }}
-                                    className="font-bold italic truncate opacity-75"
-                                  >
-                                    Untitled Note
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Timestamp and In-Capsule Delete Trigger */}
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <span
-                                  style={{
-                                    color: palette.textMuted,
-                                  }}
-                                  className="text-[10px] font-bold tabular-nums opacity-85"
-                                >
-                                  {timeLabel}
-                                </span>
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (activeNoteId === (note.note_id || (note as any).id)) {
-                                      setNoteToDelete({
-                                        ...note,
-                                        title: noteTitleInput,
-                                        text: noteBodyInput,
-                                        color: noteColorInput,
-                                      });
-                                    } else {
-                                      setNoteToDelete(note);
-                                    }
-                                  }}
-                                  style={{
-                                    color: palette.textMuted,
-                                    backgroundColor: `${palette.accent}20`,
-                                  }}
-                                  className="p-1 rounded-md hover:text-rose-600 hover:bg-rose-100/90 transition-all cursor-pointer opacity-80 sm:opacity-0 group-hover:opacity-100"
-                                  title="Delete note capsule"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5 stroke-[2.2]" />
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* 3-4 Lines Clamped Note Text Preview in BOLD with Vibrant Blue Clickable Links */}
-                            <p
-                              style={{
-                                fontSize: computedCapsuleStyle.bodyFontSize,
-                                color: palette.textBody,
-                              }}
-                              className={`font-bold whitespace-pre-wrap leading-relaxed ${computedCapsuleStyle.lineClampClass}`}
-                            >
-                              {note.text.trim() ? (
-                                tokenizeTextWithLinks(note.text).map((token, i) =>
-                                  token.type === 'link' && token.url ? (
-                                    <LinkWithPreview
-                                      key={`${token.url}-${i}`}
-                                      url={token.url}
-                                      domain={token.domain}
-                                      path={token.path}
-                                      variant="capsule"
-                                      className="!text-[#2563eb] hover:!text-[#1d4ed8] font-bold !underline !decoration-[#3b82f6] hover:!decoration-[#1d4ed8]"
-                                      stopPropagation={true}
-                                    >
-                                      {token.content}
-                                    </LinkWithPreview>
-                                  ) : (
-                                    <React.Fragment key={i}>{token.content}</React.Fragment>
-                                  )
-                                )
-                              ) : (
-                                <span className="opacity-40 font-normal italic">Empty note. Click to type...</span>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })
+                    <div
+                      onClick={() => handleCreateCapsule('update')}
+                      className="p-5 text-center rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50/80 transition-all cursor-pointer space-y-1 group"
+                    >
+                      <Rocket className="w-5 h-5 text-emerald-500 mx-auto group-hover:scale-110 transition-transform" />
+                      <p className="text-xs font-bold text-emerald-900">No updates logged yet</p>
+                      <p className="text-[11px] text-emerald-600 font-medium">
+                        Click here or press <span className="font-mono font-bold">Alt+U</span> to record an update
+                      </p>
+                    </div>
                   )}
+                </section>
+              )}
+
+              {/* SECTION 2: IDEA */}
+              {(activeCategoryFilter === 'all' || activeCategoryFilter === 'idea') && (
+                <section id="section-idea" className="space-y-3">
+                  {/* Category Header Banner */}
+                  <div className="flex items-center justify-between pb-2 border-b border-sky-200/60">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shadow-2xs">
+                        <Lightbulb className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-sky-950 uppercase tracking-wide">
+                          Idea
+                        </h3>
+                        <p className="text-[11px] text-sky-700 font-medium hidden sm:block">
+                          Brainstorming sparks, concepts, angles & future directions
+                        </p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100/90 text-sky-800 tabular-nums">
+                        {ideaList.length}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCreateCapsule('idea')}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white transition-all flex items-center gap-1.5 shadow-xs cursor-pointer min-h-[36px]"
+                      title="Add Idea (Shortcut: Alt+I)"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Idea</span>
+                      <kbd className="hidden sm:inline px-1 py-0.2 text-[9px] bg-sky-800/40 rounded font-mono">
+                        Alt+I
+                      </kbd>
+                    </button>
+                  </div>
+
+                  {/* List of Idea Capsules */}
+                  {ideaList.length > 0 ? (
+                    <div className="space-y-3">
+                      {ideaList.map((note, idx) => renderCapsuleCard(note, idx, 'idea'))}
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => handleCreateCapsule('idea')}
+                      className="p-5 text-center rounded-2xl border-2 border-dashed border-sky-200 bg-sky-50/40 hover:bg-sky-50/80 transition-all cursor-pointer space-y-1 group"
+                    >
+                      <Lightbulb className="w-5 h-5 text-sky-500 mx-auto group-hover:scale-110 transition-transform" />
+                      <p className="text-xs font-bold text-sky-900">No ideas recorded yet</p>
+                      <p className="text-[11px] text-sky-600 font-medium">
+                        Click here or press <span className="font-mono font-bold">Alt+I</span> to capture an idea
+                      </p>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* SECTION 3: ADDITIONAL NOTE */}
+              {(activeCategoryFilter === 'all' || activeCategoryFilter === 'note') && (
+                <section id="section-note" className="space-y-3">
+                  {/* Category Header Banner */}
+                  <div className="flex items-center justify-between pb-2 border-b border-purple-200/60">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shadow-2xs">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-purple-950 uppercase tracking-wide">
+                          Additional Note
+                        </h3>
+                        <p className="text-[11px] text-purple-700 font-medium hidden sm:block">
+                          Reference snippets, credentials, scratchpad notes & links
+                        </p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100/90 text-purple-800 tabular-nums">
+                        {additionalNotesList.length}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCreateCapsule('note')}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white transition-all flex items-center gap-1.5 shadow-xs cursor-pointer min-h-[36px]"
+                      title="Add Note (Shortcut: Alt+N)"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Note</span>
+                      <kbd className="hidden sm:inline px-1 py-0.2 text-[9px] bg-purple-800/40 rounded font-mono">
+                        Alt+N
+                      </kbd>
+                    </button>
+                  </div>
+
+                  {/* List of Additional Note Capsules */}
+                  {additionalNotesList.length > 0 ? (
+                    <div className="space-y-3">
+                      {additionalNotesList.map((note, idx) => renderCapsuleCard(note, idx, 'note'))}
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => handleCreateCapsule('note')}
+                      className="p-5 text-center rounded-2xl border-2 border-dashed border-purple-200 bg-purple-50/40 hover:bg-purple-50/80 transition-all cursor-pointer space-y-1 group"
+                    >
+                      <FileText className="w-5 h-5 text-purple-500 mx-auto group-hover:scale-110 transition-transform" />
+                      <p className="text-xs font-bold text-purple-900">No additional notes yet</p>
+                      <p className="text-[11px] text-purple-600 font-medium">
+                        Click here or press <span className="font-mono font-bold">Alt+N</span> to add an additional note
+                      </p>
+                    </div>
+                  )}
+                </section>
+              )}
+            </div>
+
+            {/* ================================================================= */}
+            {/* FLOATING SPEED-DIAL BUTTON (THUMB ZONE WITH 3 CAPSULE ACTIONS)     */}
+            {/* ================================================================= */}
+            <div className="absolute bottom-6 right-6 z-40 flex flex-col items-end pointer-events-auto">
+              {/* Speed-Dial Sub-Buttons (Visible when open) */}
+              {isSpeedDialOpen && (
+                <div className="mb-3 flex flex-col items-end gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200">
+                  {/* Option 1: Additional Note */}
+                  <button
+                    type="button"
+                    onClick={() => handleCreateCapsule('note')}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-lg transition-transform active:scale-95 cursor-pointer min-h-[44px]"
+                  >
+                    <span className="font-semibold text-purple-100 text-[11px]">Alt+N</span>
+                    <span>+ Additional Note</span>
+                    <FileText className="w-4 h-4 ml-1" />
+                  </button>
+
+                  {/* Option 2: Idea */}
+                  <button
+                    type="button"
+                    onClick={() => handleCreateCapsule('idea')}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-lg transition-transform active:scale-95 cursor-pointer min-h-[44px]"
+                  >
+                    <span className="font-semibold text-sky-100 text-[11px]">Alt+I</span>
+                    <span>+ Idea</span>
+                    <Lightbulb className="w-4 h-4 ml-1" />
+                  </button>
+
+                  {/* Option 3: Updates */}
+                  <button
+                    type="button"
+                    onClick={() => handleCreateCapsule('update')}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-lg transition-transform active:scale-95 cursor-pointer min-h-[44px]"
+                  >
+                    <span className="font-semibold text-emerald-100 text-[11px]">Alt+U</span>
+                    <span>+ Update</span>
+                    <Rocket className="w-4 h-4 ml-1" />
+                  </button>
                 </div>
-              </div>
+              )}
+
+              {/* Main FAB Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setIsSpeedDialOpen((prev) => !prev)}
+                style={{
+                  boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.3)',
+                }}
+                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer text-white min-h-[48px] min-w-[48px] ${
+                  isSpeedDialOpen
+                    ? 'bg-zinc-800 rotate-45'
+                    : 'bg-zinc-900 hover:bg-zinc-800 hover:scale-105 active:scale-95'
+                }`}
+                title={isSpeedDialOpen ? 'Close capsule speed-dial' : 'Trigger new capsule (Alt+U, Alt+I, Alt+N)'}
+              >
+                <Plus className="w-6 h-6 stroke-[2.5]" />
+              </button>
             </div>
           </div>
         </div>
@@ -1554,7 +1471,7 @@ export const WorkThreadsView: React.FC = () => {
                   placeholder="e.g. Project Orion, Product Design, Marketing..."
                   value={newThreadTitle}
                   onChange={(e) => setNewThreadTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-xl focus:bg-white focus:border-zinc-900 focus:outline-none text-zinc-900 font-medium"
+                  className="w-full px-3.5 py-2.5 text-sm bg-zinc-50 border border-zinc-200 rounded-xl focus:bg-white focus:border-zinc-900 focus:outline-none text-zinc-900 font-medium"
                 />
               </div>
 
@@ -1562,13 +1479,13 @@ export const WorkThreadsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowNewThreadModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors cursor-pointer min-h-[44px]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl transition-colors shadow-2xs cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl transition-colors shadow-2xs cursor-pointer min-h-[44px]"
                 >
                   Create Thread
                 </button>
@@ -1598,109 +1515,63 @@ export const WorkThreadsView: React.FC = () => {
           >
             {/* Header: Destructive Icon + Close Button */}
             <div className="flex items-center justify-between">
-              <div className="w-11 h-11 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200/80 shadow-2xs">
-                <Trash2 className="w-5 h-5 stroke-[2.2]" />
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shadow-2xs">
+                <AlertTriangle className="w-5 h-5" />
               </div>
               <button
                 type="button"
                 onClick={() => setNoteToDelete(null)}
                 disabled={isDeleting}
-                className="w-8 h-8 rounded-full text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 flex items-center justify-center transition-colors cursor-pointer"
-                title="Cancel and close"
+                className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer disabled:opacity-40"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Title & Description */}
-            <div className="space-y-1">
-              <h3 className="text-base font-black text-zinc-900 tracking-tight">
-                Delete Note Capsule?
-              </h3>
-              <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-                Are you sure you want to delete this capsule note? This action is permanent and cannot be undone.
+            {/* Explanation text */}
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-zinc-900">Delete Capsule Note?</h3>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                Are you sure you want to permanently delete this capsule?
+                {noteToDelete.title && (
+                  <span className="block mt-1 font-bold text-zinc-800">
+                    &quot;{noteToDelete.title}&quot;
+                  </span>
+                )}
               </p>
             </div>
 
-            {/* Dedicated Capsule Preview Card */}
-            {(() => {
-              const pal = getNotePalette(noteToDelete, 0);
-              const previewTime = formatDateTimeWithHM(noteToDelete.updated_at || noteToDelete.created_at);
-              return (
-                <div
-                  style={{
-                    backgroundColor: pal.bgLight,
-                    boxShadow: pal.glowShadow,
-                  }}
-                  className="p-4 rounded-2xl space-y-2 border-none"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span
-                        style={{ backgroundColor: pal.accent }}
-                        className="w-2 h-2 rounded-full shrink-0"
-                      />
-                      <h4
-                        style={{ color: pal.textTitle }}
-                        className="text-xs font-black truncate"
-                      >
-                        {noteToDelete.title?.trim() || 'Untitled Note'}
-                      </h4>
-                    </div>
-                    {previewTime && (
-                      <span
-                        style={{ color: pal.textMuted }}
-                        className="text-[10px] font-bold tabular-nums shrink-0"
-                      >
-                        {previewTime}
-                      </span>
-                    )}
-                  </div>
-                  <p
-                    style={{ color: pal.textBody }}
-                    className="text-[11px] font-bold line-clamp-3 leading-relaxed whitespace-pre-wrap"
-                  >
-                    {noteToDelete.text?.trim() || (
-                      <span className="italic opacity-50 font-normal">Empty note content</span>
-                    )}
-                  </p>
-                </div>
-              );
-            })()}
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2.5 pt-1">
+            {/* Actions */}
+            <div className="flex items-center gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setNoteToDelete(null)}
                 disabled={isDeleting}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer"
+                className="flex-1 py-2.5 px-3 rounded-xl border border-zinc-200 text-xs font-bold text-zinc-700 hover:bg-zinc-100 transition-all cursor-pointer disabled:opacity-50 min-h-[44px]"
               >
-                Keep Note
+                Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDeleteNote}
                 disabled={isDeleting}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/25 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 min-h-[44px]"
               >
                 {isDeleting ? (
-                  <span>Deleting...</span>
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <>
-                    <Trash2 className="w-3.5 h-3.5 stroke-[2.2]" />
-                    <span>Delete Capsule</span>
-                  </>
+                  <Trash2 className="w-3.5 h-3.5" />
                 )}
+                <span>Delete</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ======================================================================== */}
-      {/* DEDICATED IN-APP DELETE THREAD CONFIRMATION MODAL UI (NO WINDOW.CONFIRM) */}
-      {/* ======================================================================== */}
+      {/* ====================================================================== */}
+      {/* DEDICATED IN-APP DELETE THREAD CONFIRMATION MODAL UI (NO WINDOW.CONFIRM)*/}
+      {/* ====================================================================== */}
       {threadToDelete && (
         <div
           onClick={(e) => {
@@ -1718,62 +1589,53 @@ export const WorkThreadsView: React.FC = () => {
           >
             {/* Header: Destructive Icon + Close Button */}
             <div className="flex items-center justify-between">
-              <div className="w-11 h-11 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200/80 shadow-2xs">
-                <Trash2 className="w-5 h-5 stroke-[2.2]" />
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shadow-2xs">
+                <AlertTriangle className="w-5 h-5" />
               </div>
               <button
                 type="button"
                 onClick={() => setThreadToDelete(null)}
                 disabled={isDeleting}
-                className="w-8 h-8 rounded-full text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 flex items-center justify-center transition-colors cursor-pointer"
-                title="Cancel and close"
+                className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer disabled:opacity-40"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-1">
-              <h3 className="text-base font-black text-zinc-900 tracking-tight">
-                Delete Thread?
-              </h3>
-              <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-                Are you sure you want to permanently delete this thread box and all of its capsule notes?
+            {/* Explanation text */}
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-zinc-900">Delete Entire Thread?</h3>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                This will delete the thread{' '}
+                <span className="font-bold text-zinc-800">
+                  &quot;{threadToDelete.title || 'Untitled Thread'}&quot;
+                </span>{' '}
+                and all {threadToDelete.notes_list?.length || 0} of its capsule notes.
               </p>
             </div>
 
-            {/* Thread Details Preview */}
-            <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/70 space-y-1">
-              <h4 className="text-xs font-black text-zinc-900 truncate">
-                {threadToDelete.title || 'Untitled Thread'}
-              </h4>
-              <p className="text-[11px] font-semibold text-zinc-500">
-                {(threadToDelete.notes_list || []).length} capsule notes will be removed
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 pt-1">
+            {/* Actions */}
+            <div className="flex items-center gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setThreadToDelete(null)}
                 disabled={isDeleting}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer"
+                className="flex-1 py-2.5 px-3 rounded-xl border border-zinc-200 text-xs font-bold text-zinc-700 hover:bg-zinc-100 transition-all cursor-pointer disabled:opacity-50 min-h-[44px]"
               >
-                Keep Thread
+                Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDeleteThread}
                 disabled={isDeleting}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/25 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 min-h-[44px]"
               >
                 {isDeleting ? (
-                  <span>Deleting...</span>
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <>
-                    <Trash2 className="w-3.5 h-3.5 stroke-[2.2]" />
-                    <span>Delete Thread</span>
-                  </>
+                  <Trash2 className="w-3.5 h-3.5" />
                 )}
+                <span>Delete</span>
               </button>
             </div>
           </div>

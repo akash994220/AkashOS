@@ -113,7 +113,7 @@ export const IdeasNotesView: React.FC = () => {
 
   // 1. Subscribe to idea folders (App Spaces)
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
     const qFolders = query(collection(db, 'idea_folders'), where('owner_uid', '==', user.uid));
     const unsub = onSnapshot(
       qFolders,
@@ -128,7 +128,7 @@ export const IdeasNotesView: React.FC = () => {
 
   // 2. Subscribe to idea notes
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
     const qNotes = query(collection(db, 'idea_notes'), where('owner_uid', '==', user.uid));
     const unsub = onSnapshot(
       qNotes,

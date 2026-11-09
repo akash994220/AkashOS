@@ -39,7 +39,7 @@ export const FinancialView: React.FC = () => {
 
   // Firestore Subscriptions for Financial Entries
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const qEntries = query(
       collection(db, 'financial_entries'),

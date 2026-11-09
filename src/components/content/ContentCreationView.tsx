@@ -63,7 +63,7 @@ export const ContentCreationView: React.FC = () => {
 
   // 2. Real-time Firestore subscriptions for Categories
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const qCat = query(collection(db, 'content_categories'), where('owner_uid', '==', user.uid));
     const unsubCat = onSnapshot(
@@ -93,7 +93,7 @@ export const ContentCreationView: React.FC = () => {
 
   // 3. Real-time Firestore subscriptions for Content Items
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const qItems = query(collection(db, 'content_items'), where('owner_uid', '==', user.uid));
     const unsubItems = onSnapshot(

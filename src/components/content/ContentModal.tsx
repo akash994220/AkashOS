@@ -116,6 +116,11 @@ export const ContentModal: React.FC<ContentModalProps> = ({
     setNewCatName('');
   }, [item, isOpen, initialFormat, initialCategoryId, categories]);
 
+  // Detected links in script & title - called unconditionally at top level
+  const detectedScriptLinks = useMemo(() => {
+    return extractAllLinks(`${title} ${scriptText}`);
+  }, [title, scriptText]);
+
   if (!isOpen) return null;
 
   // Platform checkbox toggle
@@ -186,11 +191,6 @@ export const ContentModal: React.FC<ContentModalProps> = ({
   const scriptWordCount = scriptText.trim() ? scriptText.trim().split(/\s+/).length : 0;
   const scriptCharCount = scriptText.length;
   const parsedTagCount = parseTagsFromRaw(rawTags).length;
-
-  // Detected links in script & title
-  const detectedScriptLinks = useMemo(() => {
-    return extractAllLinks(`${title} ${scriptText}`);
-  }, [title, scriptText]);
 
   // Save handler
   const handleSubmit = async (e: React.FormEvent) => {

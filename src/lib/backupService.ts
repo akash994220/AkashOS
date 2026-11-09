@@ -51,6 +51,10 @@ export async function exportAllUserData(
   userEmail?: string | null,
   onProgress?: (msg: string, percent: number) => void
 ): Promise<BackupDataPayload> {
+  if (!db) {
+    throw new Error('Firestore database is not initialized. Please ensure network connection and Firebase configuration are active.');
+  }
+
   const resultCollections: Record<string, any[]> = {};
   const counts: Record<string, number> = {};
   let totalRecords = 0;
@@ -336,6 +340,10 @@ export async function restoreUserData(
   }
 
   let processedCount = 0;
+
+  if (!db) {
+    throw new Error('Firestore database is not initialized. Please ensure network connection and Firebase configuration are active.');
+  }
 
   // Maximum operations per Firestore batch is 500. We use 250 for high safety margin.
   const BATCH_CHUNK_SIZE = 250;

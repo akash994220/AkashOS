@@ -59,7 +59,7 @@ export const GlobalOmniSearchModal: React.FC<GlobalOmniSearchModalProps> = ({ is
 
   // Subscriptions when modal opens
   useEffect(() => {
-    if (!isOpen || !user) return;
+    if (!isOpen || !user || !db) return;
 
     const qTasks = query(collection(db, 'daily_tasks'), where('owner_uid', '==', user.uid));
     const unsubTasks = onSnapshot(qTasks, (snap) => {

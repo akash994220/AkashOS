@@ -74,15 +74,17 @@ export const ContentCard: React.FC<ContentCardProps> = ({
       setInlineSuccessUrl(res.videoUrl);
 
       // Update Firestore content item posted_to array and status
-      try {
-        await updateDoc(doc(db, 'content_items', item.id), {
-          posted_to: arrayUnion('youtube'),
-          status: 'posted',
-          posted_date: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-      } catch (dbErr) {
-        console.warn('Could not update Firestore document after publishing:', dbErr);
+      if (db) {
+        try {
+          await updateDoc(doc(db, 'content_items', item.id), {
+            posted_to: arrayUnion('youtube'),
+            status: 'posted',
+            posted_date: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        } catch (dbErr) {
+          console.warn('Could not update Firestore document after publishing:', dbErr);
+        }
       }
     } catch (err: any) {
       setInlineError(err?.message || 'Failed to publish to YouTube');

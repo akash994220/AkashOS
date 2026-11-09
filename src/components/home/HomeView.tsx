@@ -60,7 +60,7 @@ export const HomeView: React.FC = () => {
 
   // Fetch Firestore summaries
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     // 1. Daily tasks
     const qTasks = query(collection(db, 'daily_tasks'), where('owner_uid', '==', user.uid));

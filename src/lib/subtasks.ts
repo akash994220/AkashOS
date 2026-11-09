@@ -98,7 +98,7 @@ export const stopAllRunningSubtaskTimers = async (
       return sub;
     });
 
-    if (taskChanged) {
+    if (taskChanged && db) {
       try {
         await updateDoc(doc(db, 'daily_tasks', task.task_id), {
           subtasks: updatedSubtasks,
@@ -120,6 +120,7 @@ export const toggleSubtaskTimerRemote = async (
   subtaskId: string,
   allTasks: DailyTask[]
 ): Promise<void> => {
+  if (!db) return;
   const targetTask = allTasks.find((t) => t.task_id === taskId);
   if (!targetTask || !targetTask.subtasks) return;
 

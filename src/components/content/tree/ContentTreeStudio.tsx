@@ -103,7 +103,7 @@ export const ContentTreeStudio: React.FC<ContentTreeStudioProps> = ({
 
   // 1. Real-time subscription to user's content_trees
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const q = query(collection(db, 'content_trees'), where('owner_uid', '==', user.uid));
     const unsubscribe = onSnapshot(

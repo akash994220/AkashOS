@@ -25,18 +25,20 @@ export const firebaseConfig = {
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Initialize Firestore safely with fallback
-let firestoreInstance;
+// Initialize Firestore safely with reliable singleton retrieval
+let firestoreInstance: any = null;
 try {
-  firestoreInstance = initializeFirestore(app, {
-    ignoreUndefinedProperties: true,
-  });
-} catch {
+  firestoreInstance = getFirestore(app);
+} catch (e1) {
   try {
-    firestoreInstance = getFirestore(app);
-  } catch (err) {
-    console.error('Firestore initialization error:', err);
-    firestoreInstance = getFirestore(app);
+    firestoreInstance = initializeFirestore(app, {});
+  } catch (e2) {
+    console.warn('Fallback to default Firestore instance:', e1, e2);
+    try {
+      firestoreInstance = getFirestore(app);
+    } catch {
+      firestoreInstance = null;
+    }
   }
 }
 
@@ -75,6 +77,8 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path,
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.warn('Firestore Error: ', JSON.stringify(errInfo));
+  if (operationType === OperationType.CREATE || operationType === OperationType.UPDATE || operationType === OperationType.DELETE || operationType === OperationType.WRITE) {
+    throw new Error(errInfo.error);
+  }
 }

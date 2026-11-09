@@ -12,20 +12,23 @@ import {
 
 dotenv.config();
 
-const app = express();
-const PORT = 3000;
+process.on('uncaughtException', (err) => {
+  console.error('Server Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Server Unhandled Rejection:', reason);
+});
 
-// Security & Defense Headers Middleware
+const app = express();
+const args = process.argv.slice(2);
+const portArgIndex = args.indexOf('--port');
+const portFromArgs = portArgIndex !== -1 && args[portArgIndex + 1] ? parseInt(args[portArgIndex + 1], 10) : null;
+const PORT = Number.isFinite(portFromArgs) && portFromArgs ? portFromArgs : (process.env.PORT ? parseInt(process.env.PORT, 10) : 3000);
+
+// Security Headers Middleware
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  // Allow framing only by trusted preview and applet origins
-  res.setHeader(
-    'Content-Security-Policy',
-    "frame-ancestors 'self' https://*.google.com https://*.googleusercontent.com https://*.run.app https://*.aistudio.google.com;"
-  );
   next();
 });
 
@@ -608,7 +611,7 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, allowedHosts: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);

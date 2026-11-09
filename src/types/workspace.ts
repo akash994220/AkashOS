@@ -15,6 +15,8 @@ export interface TaskSubtask {
   timer_started_at: string | null;
   accumulated_minutes: number;
   is_done: boolean;
+  color?: string;
+  show_timestamp?: boolean;
 }
 
 export interface DailyTask {
@@ -43,7 +45,18 @@ export interface DailyTaskSession {
   duration_minutes: number;
 }
 
-export type WorkThreadStatus = 'in_progress' | 'paused' | 'done';
+export type CapsuleCategory = 'update' | 'idea' | 'note';
+
+export interface ThreadCapsule {
+  id: string;
+  category: CapsuleCategory;
+  title?: string;
+  body: string;
+  color?: string;
+  created_at: string;
+  updated_at?: string;
+  tags?: string[];
+}
 
 export interface ThreadNote {
   note_id: string;
@@ -53,6 +66,7 @@ export interface ThreadNote {
   updated_at?: string;
   color?: string;
   cmyk_color?: string;
+  category?: CapsuleCategory;
 }
 
 export interface ThreadTask {
@@ -67,6 +81,8 @@ export interface ThreadTask {
   date_logs?: Record<string, number>;
 }
 
+export type WorkThreadStatus = 'in_progress' | 'done' | 'paused' | 'active' | 'archived' | 'completed';
+
 export interface WorkThread {
   id?: string;
   thread_id: string;
@@ -75,6 +91,7 @@ export interface WorkThread {
   sites_or_apps?: string[];
   accounts_used?: string[];
   notes_list?: ThreadNote[];
+  capsules?: ThreadCapsule[];
   link_url?: string;
   // Sub-tasks / sub-threads with time-lapse & date-separated tracking
   tasks?: ThreadTask[];

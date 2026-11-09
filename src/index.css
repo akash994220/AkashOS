@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* Android & Mobile Touch Ergonomics */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
+}
+
+.mobile-dvh-viewport {
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+}
+
+.safe-pb-margin {
+  padding-bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+}
+
 /* =========================================================================
    CUSTOM SCRIPT & TYPOGRAPHY SYSTEM
    - English & Counting Numbers: Poppins (with tabular-nums for numeric precision)

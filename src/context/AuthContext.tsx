@@ -77,6 +77,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
 
       if (currentUser) {
+        if (!db) {
+          setUserSettings(defaultSettings);
+          return;
+        }
         // Listen to or fetch user settings
         const settingsRef = doc(db, 'user_settings', currentUser.uid);
         const unsubDoc = onSnapshot(
@@ -116,13 +120,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUserSettings = async (newSettings: Partial<UserSettings>) => {
     if (!user) return;
-    const settingsRef = doc(db, 'user_settings', user.uid);
-    await setDoc(settingsRef, {
-      ...userSettings,
-      ...newSettings,
-      owner_uid: user.uid,
-      updated_at: new Date().toISOString(),
-    }, { merge: true });
+    if (db) {
+      try {
+        const settingsRef = doc(db, 'user_settings', user.uid);
+        await setDoc(settingsRef, {
+          ...userSettings,
+          ...newSettings,
+          owner_uid: user.uid,
+          updated_at: new Date().toISOString(),
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Could not persist user settings to Firestore:', err);
+      }
+    }
     setUserSettings((prev) => ({ ...prev, ...newSettings }));
   };
 
@@ -135,7 +145,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInAnonymously = async () => {
-    await fbSignInAnonymously(auth);
+    try {
+      await fbSignInAnonymously(auth);
+    } catch (err) {
+      console.warn('Firebase anonymous auth failed, falling back to local demo guest session:', err);
+      const demoUser = {
+        uid: 'demo_guest_user',
+        email: 'guest@akashos.local',
+        displayName: 'Guest Demo User',
+        isAnonymous: true,
+      } as unknown as User;
+      setUser(demoUser);
+    }
   };
 
   const signOut = async () => {

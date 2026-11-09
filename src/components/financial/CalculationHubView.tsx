@@ -197,7 +197,7 @@ export const CalculationHubView: React.FC<CalculationHubProps> = ({
 
   // 1. Subscribe to Firestore saved calculations
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
     const qCalc = query(
       collection(db, 'financial_calculations'),
       where('owner_uid', '==', user.uid)

@@ -39,7 +39,7 @@ export const AnalyticsView: React.FC = () => {
   const currentMonthStr = new Date().toISOString().substring(0, 7);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const qTasks = query(collection(db, 'daily_tasks'), where('owner_uid', '==', user.uid));
     const unsubTasks = onSnapshot(

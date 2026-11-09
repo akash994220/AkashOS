@@ -14,7 +14,7 @@ import { ContentCategory, ContentItem, ContentFormat, ContentStatus, PostedPlatf
  * - old collections are preserved as-is.
  */
 export async function runContentMigration(uid: string): Promise<{ migratedCount: number }> {
-  if (!uid) return { migratedCount: 0 };
+  if (!uid || !db) return { migratedCount: 0 };
   const storageKey = `content_migration_completed_${uid}`;
   if (localStorage.getItem(storageKey) === 'true') {
     return { migratedCount: 0 };

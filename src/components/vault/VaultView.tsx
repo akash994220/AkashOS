@@ -187,7 +187,7 @@ export const VaultView: React.FC = () => {
 
   // 1. Subscriptions to Vault Firestore Collections
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const qFolders = query(collection(db, 'vault_folders'), where('owner_uid', '==', user.uid));
     const unsubFolders = onSnapshot(

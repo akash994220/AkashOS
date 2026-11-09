@@ -184,6 +184,7 @@ export const stopAllRunningThreadTimers = async (
   allThreads: WorkThread[],
   excludeTaskId?: string
 ): Promise<void> => {
+  if (!db) return;
   const now = Date.now();
   for (const thread of allThreads) {
     const tasks = thread.tasks || [];
@@ -246,7 +247,7 @@ export const addThreadTask = async (
   title: string,
   existingTasks: ThreadTask[] = []
 ): Promise<void> => {
-  if (!title.trim()) return;
+  if (!title.trim() || !db) return;
 
   const newTask: ThreadTask = {
     task_id: `task_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -274,6 +275,7 @@ export const deleteThreadTask = async (
   taskId: string,
   existingTasks: ThreadTask[] = []
 ): Promise<void> => {
+  if (!db) return;
   const updatedTasks = existingTasks.filter((t) => t.task_id !== taskId);
   const totalThreadMin = updatedTasks.reduce((s, tk) => s + (tk.total_minutes || 0), 0);
 
@@ -291,6 +293,7 @@ export const toggleThreadTaskDone = async (
   taskId: string,
   existingTasks: ThreadTask[] = []
 ): Promise<void> => {
+  if (!db) return;
   const target = existingTasks.find((t) => t.task_id === taskId);
   if (!target) return;
 
@@ -341,6 +344,7 @@ export const adjustThreadTaskDateLog = async (
   minutes: number,
   allThreads: WorkThread[]
 ): Promise<void> => {
+  if (!db) return;
   const targetThread = allThreads.find((t) => (t.id || t.thread_id) === threadDocId || t.thread_id === threadDocId);
   if (!targetThread) return;
 

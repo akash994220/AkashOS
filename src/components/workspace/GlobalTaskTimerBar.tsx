@@ -18,7 +18,7 @@ export const GlobalTaskTimerBar: React.FC = () => {
 
   // Subscribe to user daily tasks
   useEffect(() => {
-    if (!user) {
+    if (!user || !db) {
       setTasks([]);
       return;
     }
