@@ -362,87 +362,6 @@ export const WorkspaceView: React.FC = () => {
   if (currentPage !== 'hub') {
     return (
       <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-4 pb-8 sm:pb-12">
-        {/* Navigation Breadcrumb & Fixed Switcher */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1">
-          {/* Breadcrumb back to Hub + Quick Backup */}
-          <div className="flex items-center gap-2 self-start">
-            <button
-              onClick={() => navigateTo('hub')}
-              style={{
-                backgroundColor: theme.colors.bgSecondary,
-                color: theme.colors.textPrimary,
-                borderRadius: theme.radius.md,
-                minHeight: '34px',
-              }}
-              className="px-3 py-1.5 text-xs font-semibold hover:bg-zinc-200 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Workspace Hub</span>
-            </button>
-
-            <button
-              onClick={() => setShowBackupModal(true)}
-              style={{
-                backgroundColor: theme.colors.bgSecondary,
-                color: theme.colors.textPrimary,
-                borderRadius: theme.radius.md,
-                minHeight: '34px',
-              }}
-              className="px-2.5 py-1.5 text-xs font-semibold hover:bg-zinc-200 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
-              title="Export or Import Backup"
-            >
-              <Database className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Backup</span>
-            </button>
-          </div>
-
-          {/* Smooth Capsule Switcher */}
-          <div
-            style={{
-              backgroundColor: theme.colors.bgSecondary,
-              borderColor: theme.colors.borderLight,
-              borderRadius: theme.radius.full,
-            }}
-            className="p-1 border flex items-center gap-0.5 sm:gap-1 w-full sm:w-auto shadow-2xs overflow-x-auto"
-          >
-            {appSwitchTabs.map((tab) => {
-              const isCurrent = currentPage === tab.id;
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  id={`subpage-switch-${tab.id}`}
-                  onClick={() => navigateTo(tab.id)}
-                  title={tab.label}
-                  style={{
-                    backgroundColor: isCurrent ? theme.colors.bgCard : 'transparent',
-                    color: isCurrent ? theme.colors.textPrimary : theme.colors.textSecondary,
-                    borderRadius: theme.radius.full,
-                    minHeight: '32px',
-                  }}
-                  className={`flex items-center justify-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 text-xs cursor-pointer transition-all whitespace-nowrap ${
-                    isCurrent ? 'shadow-xs font-bold' : 'hover:text-zinc-900 font-medium'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden md:inline">{tab.label}</span>
-                  {tab.count !== undefined && tab.count > 0 && (
-                    <span
-                      style={{
-                        backgroundColor: isCurrent ? theme.colors.bgSecondary : 'rgba(0,0,0,0.06)',
-                        color: isCurrent ? theme.colors.textPrimary : theme.colors.textMuted,
-                      }}
-                      className="text-[10px] px-1.5 py-0.2 rounded-full font-bold shrink-0 ml-0.5"
-                    >
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Render Active Sub-Page */}
         <div>
           {currentPage === 'daily_tasks' && <DailyTasksView />}
@@ -468,42 +387,104 @@ export const WorkspaceView: React.FC = () => {
   // ==========================================
   return (
     <div className="p-3.5 sm:p-6 max-w-7xl mx-auto space-y-5 pb-16">
-      {/* 1. CLEAN WORKSPACE HEADER (NO REDUNDANT CLUTTER) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-zinc-200/60">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-              Workspace Hub
-            </span>
-            <span className="text-xs text-zinc-400 font-medium">
-              {new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-            </span>
+      {/* 1. VIBRANT COBALT-TO-TEAL COMMAND CENTER HERO WITH WHITE ACTION TRAY */}
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #2563EB 0%, #0D9488 100%)',
+          borderRadius: '1.75rem',
+          boxShadow: '0 14px 32px -10px rgba(37, 99, 235, 0.35)',
+        }}
+        className="p-5 sm:p-6 text-white relative overflow-hidden space-y-4"
+      >
+        <div className="absolute -right-12 -top-12 w-56 h-56 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+          <div>
+            <div className="text-[11px] font-semibold text-blue-100 tracking-wide">
+              Workspace Hub · {new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-0.5">
+              Command Center
+            </h1>
+            <p className="text-xs text-blue-50/90 font-medium">
+              7 specialized productivity studios with real-time analytics
+            </p>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight mt-0.5">
-            Command Center
-          </h1>
-          <p className="text-xs text-zinc-500 font-medium">
-            7 specialized productivity studios with real-time analytics
-          </p>
+
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            <button
+              id="workspace-quick-backup-btn"
+              type="button"
+              onClick={() => setShowBackupModal(true)}
+              className="px-3.5 py-2 rounded-2xl bg-white/95 hover:bg-white text-slate-900 flex items-center gap-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+              title="Export or Import Full Data Backup"
+            >
+              <Database className="w-3.5 h-3.5 text-blue-600" />
+              <span>Data Backup</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          <button
-            id="workspace-quick-backup-btn"
-            type="button"
-            onClick={() => setShowBackupModal(true)}
-            style={{
-              backgroundColor: theme.colors.bgCard,
-              borderColor: theme.colors.borderLight,
-              color: theme.colors.textPrimary,
-              borderRadius: theme.radius.md,
-            }}
-            className="px-3 py-1.5 border flex items-center gap-1.5 text-xs font-semibold shadow-2xs hover:bg-zinc-100 transition-colors cursor-pointer"
-            title="Export or Import Full Data Backup"
+        {/* Crisp Floating White Quick-Summary Tray (Inspired by Fintech Hero Tray) */}
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl p-3 sm:px-5 sm:py-3.5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-slate-900 shadow-sm relative z-10">
+          <div
+            onClick={() => navigateTo('daily_tasks')}
+            className="flex items-center gap-2.5 cursor-pointer group"
           >
-            <Database className="w-3.5 h-3.5 text-blue-600" />
-            <span>Data Backup</span>
-          </button>
+            <span className="w-8 h-8 rounded-full bg-sky-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <CheckCircle2 className="w-4 h-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Focus Today</div>
+              <div className="text-xs sm:text-sm font-extrabold font-poppins tabular-nums text-slate-900 truncate">
+                {formatMinutes(todayTotalFocusMinutes)}
+              </div>
+            </div>
+          </div>
+
+          <div
+            onClick={() => navigateTo('work_threads')}
+            className="flex items-center gap-2.5 cursor-pointer group"
+          >
+            <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <GitBranch className="w-4 h-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Active Threads</div>
+              <div className="text-xs sm:text-sm font-extrabold font-poppins tabular-nums text-slate-900 truncate">
+                {threads.length} total
+              </div>
+            </div>
+          </div>
+
+          <div
+            onClick={() => navigateTo('financial')}
+            className="flex items-center gap-2.5 cursor-pointer group"
+          >
+            <span className="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Wallet className="w-4 h-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Monthly Net</div>
+              <div className={`text-xs sm:text-sm font-extrabold font-poppins tabular-nums truncate ${netCashflow >= 0 ? 'text-teal-700' : 'text-rose-600'}`}>
+                ৳ {netCashflow >= 0 ? '+' : ''}{netCashflow.toLocaleString()}
+              </div>
+            </div>
+          </div>
+
+          <div
+            onClick={() => navigateTo('content')}
+            className="flex items-center gap-2.5 cursor-pointer group"
+          >
+            <span className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Clapperboard className="w-4 h-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Content Items</div>
+              <div className="text-xs sm:text-sm font-extrabold font-poppins tabular-nums text-slate-900 truncate">
+                {contentItems.length} items
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -571,8 +552,8 @@ export const WorkspaceView: React.FC = () => {
             {/* Top row: Icon + Title + Arrow */}
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 border border-blue-100">
-                  <ListTodo className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-full bg-sky-100 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                  <ListTodo className="w-4.5 h-4.5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-zinc-900 group-hover:text-blue-600 transition-colors">
@@ -647,8 +628,8 @@ export const WorkspaceView: React.FC = () => {
             {/* Top row */}
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 border border-purple-100">
-                  <GitBranch className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                  <GitBranch className="w-4.5 h-4.5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-zinc-900 group-hover:text-purple-600 transition-colors">
@@ -734,8 +715,8 @@ export const WorkspaceView: React.FC = () => {
             {/* Top row */}
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 border border-indigo-100">
-                  <Clapperboard className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                  <Clapperboard className="w-4.5 h-4.5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-zinc-900 group-hover:text-indigo-600 transition-colors">
@@ -816,8 +797,8 @@ export const WorkspaceView: React.FC = () => {
             {/* Top row */}
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 border border-emerald-100">
-                  <Network className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                  <Network className="w-4.5 h-4.5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-zinc-900 group-hover:text-emerald-600 transition-colors">
@@ -898,8 +879,8 @@ export const WorkspaceView: React.FC = () => {
             {/* Top row */}
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 border border-teal-100">
-                  <Wallet className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                  <Wallet className="w-4.5 h-4.5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-zinc-900 group-hover:text-teal-600 transition-colors">
@@ -992,8 +973,8 @@ export const WorkspaceView: React.FC = () => {
             {/* Top row */}
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 border border-amber-100">
-                  <Lightbulb className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                  <Lightbulb className="w-4.5 h-4.5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-zinc-900 group-hover:text-amber-600 transition-colors">
@@ -1068,8 +1049,8 @@ export const WorkspaceView: React.FC = () => {
             {/* Top row */}
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0 border border-indigo-100">
-                  <ShieldCheck className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                  <ShieldCheck className="w-4.5 h-4.5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-zinc-900 group-hover:text-indigo-600 transition-colors">

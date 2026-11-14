@@ -59,6 +59,7 @@ import {
 } from 'lucide-react';
 import { LinkWithPreview } from '../common/LinkWithPreview';
 import { tokenizeTextWithLinks, extractAllLinks } from '../../lib/linkUtils';
+import { ResizablePopupWrapper } from '../common/ResizablePopupWrapper';
 
 export const IdeasNotesView: React.FC = () => {
   const { theme } = useTheme();
@@ -1150,19 +1151,25 @@ export const IdeasNotesView: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-2 sm:p-4 md:p-6"
           // LOCKED BACKDROP: Clicking outside NEVER automatically closes the window!
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: theme.colors.bgElevated,
-              borderRadius: isFullscreen ? '0.75rem' : '1.5rem',
-              boxShadow: theme.shadows.lg,
-              border: `1px solid ${theme.colors.borderLight}`,
-              maxWidth: isFullscreen ? '98vw' : '1240px',
-              width: isFullscreen ? '98vw' : '96vw',
-              height: isFullscreen ? '97vh' : '92vh',
-            }}
-            className="modal-surface flex flex-col overflow-hidden shadow-2xl relative transition-all duration-200"
+          <ResizablePopupWrapper
+            scope="ideas"
+            popupId="note_modal"
+            defaultWidth={1100}
+            minWidth={480}
+            maxWidth={1380}
           >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: theme.colors.bgElevated,
+                borderRadius: isFullscreen ? '0.75rem' : '1.5rem',
+                boxShadow: theme.shadows.lg,
+                border: `1px solid ${theme.colors.borderLight}`,
+                width: isFullscreen ? '98vw' : '100%',
+                height: isFullscreen ? '97vh' : '92vh',
+              }}
+              className="modal-surface w-full flex flex-col overflow-hidden shadow-2xl relative transition-all duration-200"
+            >
             {/* Top Toolbar / Status Bar */}
             <div
               style={{
@@ -1433,7 +1440,8 @@ export const IdeasNotesView: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
+            </div>
+          </ResizablePopupWrapper>
         </div>
       )}
 

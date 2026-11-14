@@ -116,16 +116,14 @@ export const FinancialView: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleOpenAddModal('income')}
-            style={{ borderRadius: theme.radius.lg }}
-            className="px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-2xl transition-all shadow-[0_6px_16px_-4px_rgba(13,148,136,0.35)] flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>+ Earning</span>
           </button>
           <button
             onClick={() => handleOpenAddModal('expense')}
-            style={{ borderRadius: theme.radius.lg }}
-            className="px-3.5 py-2 text-xs font-bold text-white bg-zinc-900 hover:bg-zinc-800 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-2xl transition-all shadow-[0_6px_16px_-4px_rgba(244,63,94,0.35)] flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>- Expense</span>

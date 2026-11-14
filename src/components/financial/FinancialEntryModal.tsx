@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
 import { FinancialEntry, FinancialEntryType, TimingMode, MonthlyKind } from '../../types/financial';
 import { X, Calendar, Repeat, Tag, CreditCard, FileText, Check, DollarSign } from 'lucide-react';
+import { ResizablePopupWrapper } from '../common/ResizablePopupWrapper';
 
 interface EntryModalProps {
   isOpen: boolean;
@@ -177,14 +178,20 @@ export const FinancialEntryModal: React.FC<EntryModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 pb-[max(16px,calc(env(safe-area-inset-bottom,0px)+16px))] bg-black/65 backdrop-blur-xs animate-in fade-in duration-150">
-      <div
-        style={{
-          backgroundColor: theme.colors.bgCard,
-          borderColor: theme.colors.borderLight,
-          borderRadius: theme.radius.xl,
-        }}
-        className="w-full max-w-lg border shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
+      <ResizablePopupWrapper
+        scope="financial"
+        popupId="entry_modal"
+        defaultWidth={520}
+        minWidth={380}
       >
+        <div
+          style={{
+            backgroundColor: theme.colors.bgCard,
+            borderColor: theme.colors.borderLight,
+            borderRadius: theme.radius.xl,
+          }}
+          className="w-full border shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
+        >
         {/* Header */}
         <div
           style={{ borderBottom: `1px solid ${theme.colors.borderLight}` }}
@@ -517,7 +524,8 @@ export const FinancialEntryModal: React.FC<EntryModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
+        </div>
+      </ResizablePopupWrapper>
     </div>
   );
 };

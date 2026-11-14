@@ -106,14 +106,21 @@ export const NavigationShell: React.FC = () => {
   ];
 
   // Workspace sub-apps for desktop sidebar & quick search jump
-  const workspaceAppsList: { id: WorkspaceSection; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'daily_tasks', label: 'Tasks', icon: CheckCircle2 },
-    { id: 'work_threads', label: 'Work Threads', icon: GitBranch },
-    { id: 'ideas_notes', label: 'Ideas & Notes', icon: Lightbulb },
-    { id: 'content', label: 'Content Studio', icon: Clapperboard },
-    { id: 'idea_tree', label: 'Idea Tree', icon: Network },
-    { id: 'financial', label: 'Financial Hub', icon: Wallet },
-    { id: 'vault', label: 'Secret Vault', icon: ShieldCheck },
+  const workspaceAppsList: {
+    id: WorkspaceSection;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    circleBg: string;
+    iconColor: string;
+    activeBg: string;
+  }[] = [
+    { id: 'daily_tasks', label: 'Tasks', icon: CheckCircle2, circleBg: 'bg-sky-100/90', iconColor: 'text-blue-600', activeBg: 'bg-blue-50/90' },
+    { id: 'work_threads', label: 'Work Threads', icon: GitBranch, circleBg: 'bg-purple-100/90', iconColor: 'text-purple-600', activeBg: 'bg-purple-50/90' },
+    { id: 'ideas_notes', label: 'Ideas & Notes', icon: Lightbulb, circleBg: 'bg-amber-100/90', iconColor: 'text-amber-600', activeBg: 'bg-amber-50/90' },
+    { id: 'content', label: 'Content Studio', icon: Clapperboard, circleBg: 'bg-rose-100/90', iconColor: 'text-rose-600', activeBg: 'bg-rose-50/90' },
+    { id: 'idea_tree', label: 'Idea Tree', icon: Network, circleBg: 'bg-emerald-100/90', iconColor: 'text-emerald-600', activeBg: 'bg-emerald-50/90' },
+    { id: 'financial', label: 'Financial Hub', icon: Wallet, circleBg: 'bg-teal-100/90', iconColor: 'text-teal-600', activeBg: 'bg-teal-50/90' },
+    { id: 'vault', label: 'Secret Vault', icon: ShieldCheck, circleBg: 'bg-indigo-100/90', iconColor: 'text-indigo-600', activeBg: 'bg-indigo-50/90' },
   ];
 
   return (
@@ -146,13 +153,13 @@ export const NavigationShell: React.FC = () => {
         >
           <div
             style={{
-              backgroundColor: theme.colors.accent,
-              color: theme.colors.accentText,
-              borderRadius: theme.radius.md,
-              width: '32px',
-              height: '32px',
+              background: 'linear-gradient(135deg, #2563EB 0%, #0D9488 100%)',
+              color: '#FFFFFF',
+              borderRadius: '9999px',
+              width: '34px',
+              height: '34px',
             }}
-            className="flex items-center justify-center font-bold text-sm shadow-sm"
+            className="flex items-center justify-center font-bold text-sm shadow-sm shrink-0"
           >
             A
           </div>
@@ -212,15 +219,22 @@ export const NavigationShell: React.FC = () => {
                   id={`sidebar-app-${app.id}`}
                   onClick={() => openWorkspaceApp(app.id)}
                   style={{
-                    minHeight: '34px',
-                    borderRadius: theme.radius.md,
-                    backgroundColor: isAppActive ? theme.colors.bgSecondary : 'transparent',
+                    minHeight: '38px',
+                    borderRadius: '14px',
                     color: isAppActive ? theme.colors.textPrimary : theme.colors.textSecondary,
-                    fontWeight: isAppActive ? '600' : '400',
+                    fontWeight: isAppActive ? '600' : '500',
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-zinc-50 cursor-pointer"
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 text-xs transition-all cursor-pointer ${
+                    isAppActive ? `${app.activeBg} shadow-2xs` : 'hover:bg-slate-50/90'
+                  }`}
                 >
-                  <AppIcon className={`w-3.5 h-3.5 ${isAppActive ? 'text-blue-600' : 'text-zinc-400'}`} />
+                  <span
+                    className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-transform ${app.circleBg} ${
+                      isAppActive ? 'scale-105' : ''
+                    }`}
+                  >
+                    <AppIcon className={`w-3.5 h-3.5 ${app.iconColor}`} />
+                  </span>
                   <span className="truncate">{app.label}</span>
                 </button>
               );
@@ -281,7 +295,7 @@ export const NavigationShell: React.FC = () => {
             height: '56px',
             padding: `0 ${theme.spacing.lg}`,
           }}
-          className="flex items-center justify-between sticky top-0 z-30 shadow-xs"
+          className="flex md:hidden items-center justify-between sticky top-0 z-30 shadow-xs"
         >
           {/* Back Button & Mobile Title / Desktop Breadcrumb */}
           <div className="flex items-center gap-2 min-w-0">

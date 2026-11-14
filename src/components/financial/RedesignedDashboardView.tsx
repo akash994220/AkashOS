@@ -113,76 +113,76 @@ export const RedesignedDashboardView: React.FC<DashboardViewProps> = ({
         {/* Main Probable Balance Card */}
         <div
           style={{
-            backgroundColor: theme.colors.bgCard,
-            borderColor: theme.colors.borderLight,
-            borderRadius: theme.radius.xl,
+            background: 'linear-gradient(135deg, #2563EB 0%, #0D9488 100%)',
+            borderRadius: '1.5rem',
           }}
-          className="p-5 sm:p-6 border shadow-xs lg:col-span-2 relative overflow-hidden flex flex-col justify-between"
+          className="p-5 sm:p-6 shadow-[0_14px_34px_-10px_rgba(37,99,235,0.35)] text-white lg:col-span-2 relative overflow-hidden flex flex-col justify-between"
         >
-          {/* Subtle gradient aura */}
-          <div className="absolute -top-12 -right-12 w-48 h-48 bg-gradient-to-br from-indigo-500/10 via-emerald-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+          {/* Decorative soft glow */}
+          <div className="absolute -top-12 -right-12 w-52 h-52 bg-white/15 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-16 -left-10 w-44 h-44 bg-teal-300/15 rounded-full blur-2xl pointer-events-none" />
 
-          <div>
+          <div className="relative z-10">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">
+                <span className="p-1.5 rounded-full bg-white/15 text-white backdrop-blur-xs">
                   <Sparkles className="w-4 h-4" />
                 </span>
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-50">
                   Forecast Engine • {currentMonthName}
                 </span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-white/20 text-white backdrop-blur-xs">
                 {remainingDays} days remaining this month
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end mt-2">
               <div>
-                <div className="text-xs font-semibold text-zinc-400">Probable Month-End Balance</div>
+                <div className="text-xs font-semibold text-blue-100/90">Probable Month-End Balance</div>
                 <div
                   className={`text-2xl sm:text-3xl font-extrabold tracking-tight font-tabular mt-0.5 ${
-                    probableBalanceEOM >= 0 ? 'text-zinc-900' : 'text-rose-600'
+                    probableBalanceEOM >= 0 ? 'text-white' : 'text-rose-200'
                   }`}
                 >
                   {formatBDT(probableBalanceEOM)}
                 </div>
-                <div className="text-xs text-zinc-500 mt-1 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <div className="text-xs text-blue-50/90 mt-1 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-teal-200 shrink-0" />
                   <span>Accounts for pending recurring bills & scheduled incomes</span>
                 </div>
               </div>
 
               {/* Secondary actual current cash */}
-              <div className="sm:border-l sm:border-zinc-100 sm:pl-4 space-y-1">
-                <div className="text-xs font-medium text-zinc-400">Current Actual Net Balance</div>
-                <div className="text-lg sm:text-xl font-bold text-zinc-800 font-tabular">
+              <div className="sm:border-l sm:border-white/20 sm:pl-4 space-y-1">
+                <div className="text-xs font-medium text-blue-100/90">Current Actual Net Balance</div>
+                <div className="text-lg sm:text-xl font-bold text-white font-tabular">
                   {formatBDT(currentActualBalance)}
                 </div>
-                <div className="text-[11px] text-zinc-400">
+                <div className="text-[11px] text-blue-100/80">
                   Cumulative all-time income minus all logged expenses
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Probable Metrics Footer */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-4 mt-4 border-t border-zinc-100">
-            <div className="p-2 rounded-lg bg-zinc-50 border border-zinc-100">
-              <div className="text-[10px] text-zinc-400 font-semibold uppercase">Pending Commitments</div>
-              <div className="text-xs font-bold text-rose-600 font-tabular mt-0.5">
+          {/* Floating Crisp White Probable Metrics Tray */}
+          <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 mt-5 rounded-2xl bg-white/95 backdrop-blur-sm shadow-sm text-zinc-900">
+            <div className="px-2 py-1 rounded-xl">
+              <div className="text-[10px] text-zinc-500 font-semibold uppercase">Pending Commitments</div>
+              <div className="text-xs sm:text-sm font-bold text-rose-600 font-tabular mt-0.5">
                 -{formatBDT(pendingRecurringExpenseTotal)}
               </div>
             </div>
-            <div className="p-2 rounded-lg bg-zinc-50 border border-zinc-100">
-              <div className="text-[10px] text-zinc-400 font-semibold uppercase">Expected Inflows</div>
-              <div className="text-xs font-bold text-emerald-600 font-tabular mt-0.5">
+            <div className="px-2 py-1 rounded-xl sm:border-l sm:border-zinc-200/70 sm:pl-3">
+              <div className="text-[10px] text-zinc-500 font-semibold uppercase">Expected Inflows</div>
+              <div className="text-xs sm:text-sm font-bold text-teal-600 font-tabular mt-0.5">
                 +{formatBDT(pendingRecurringIncomeTotal)}
               </div>
             </div>
-            <div className="p-2 rounded-lg bg-zinc-50 border border-zinc-100 col-span-2 sm:col-span-1">
-              <div className="text-[10px] text-zinc-400 font-semibold uppercase">Safe Daily Spend</div>
-              <div className="text-xs font-bold text-indigo-600 font-tabular mt-0.5">
+            <div className="px-2 py-1 rounded-xl col-span-2 sm:col-span-1 sm:border-l sm:border-zinc-200/70 sm:pl-3">
+              <div className="text-[10px] text-zinc-500 font-semibold uppercase">Safe Daily Spend</div>
+              <div className="text-xs sm:text-sm font-bold text-blue-600 font-tabular mt-0.5">
                 {formatBDT(safeDailyBudget)}/day
               </div>
             </div>

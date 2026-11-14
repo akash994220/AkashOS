@@ -38,6 +38,7 @@ import {
   Palette,
   Sparkles,
 } from 'lucide-react';
+import { ResizablePopupWrapper } from '../common/ResizablePopupWrapper';
 import { motion, AnimatePresence } from 'motion/react';
 import { LinkWithPreview } from '../common/LinkWithPreview';
 import { tokenizeTextWithLinks } from '../../lib/linkUtils';
@@ -202,34 +203,44 @@ const SubtaskCapsulePill: React.FC<SubtaskCapsulePillProps> = ({
         {sub.is_done && <Check className="w-3.5 h-3.5 stroke-[3]" />}
       </button>
 
-      {/* Middle: Title with Links & Timestamp */}
+      {/* Middle: First line only in general; extended content visible when clicked */}
       <div className="min-w-0 flex-1 space-y-0.5">
-        <p
-          style={{
-            fontSize: computedStyle.fontSize,
-            color: palette.text,
-          }}
-          className={`font-semibold leading-snug line-clamp-2 select-text ${
-            sub.is_done ? 'line-through opacity-60' : ''
-          }`}
-        >
-          {tokenizeTextWithLinks(sub.title).map((token, i) =>
-            token.type === 'link' && token.url ? (
-              <LinkWithPreview
-                key={`${token.url}-${i}`}
-                url={token.url}
-                domain={token.domain}
-                path={token.path}
-                className="!text-[#2563eb] hover:!text-[#1d4ed8] font-bold !underline !decoration-[#3b82f6] hover:!decoration-[#1d4ed8]"
-                stopPropagation={true}
-              >
-                {token.content}
-              </LinkWithPreview>
-            ) : (
-              <React.Fragment key={i}>{token.content}</React.Fragment>
-            )
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p
+            style={{
+              fontSize: computedStyle.fontSize,
+              color: palette.text,
+            }}
+            className={`font-semibold leading-snug truncate select-text min-w-0 flex-1 ${
+              sub.is_done ? 'line-through opacity-60' : ''
+            }`}
+          >
+            {tokenizeTextWithLinks((sub.title || '').split('\n')[0] || '').map((token, i) =>
+              token.type === 'link' && token.url ? (
+                <LinkWithPreview
+                  key={`${token.url}-${i}`}
+                  url={token.url}
+                  domain={token.domain}
+                  path={token.path}
+                  className="!text-[#2563eb] hover:!text-[#1d4ed8] font-bold !underline !decoration-[#3b82f6] hover:!decoration-[#1d4ed8]"
+                  stopPropagation={true}
+                >
+                  {token.content}
+                </LinkWithPreview>
+              ) : (
+                <React.Fragment key={i}>{token.content}</React.Fragment>
+              )
+            )}
+          </p>
+          {(sub.title || '').includes('\n') && (
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-black/5 text-zinc-600 shrink-0 select-none"
+              title="Has extended details (click to open)"
+            >
+              +more
+            </span>
           )}
-        </p>
+        </div>
 
         {showTimestamp && sub.created_at && (
           <span
@@ -326,18 +337,6 @@ export const DailyTasksView: React.FC = () => {
   const [activeMobileTab, setActiveMobileTab] = useState<'details' | 'settings'>('details');
   const [selectedCapsuleIdForConfig, setSelectedCapsuleIdForConfig] = useState<string | null>(null);
 
-  // Draggable Modal Width (saved in localStorage across all task popups)
-  const [modalWidth, setModalWidth] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('daily_task_modal_width');
-      if (saved) {
-        const val = parseInt(saved, 10);
-        if (!isNaN(val) && val >= 420 && val <= 1000) return val;
-      }
-    } catch {}
-    return 540;
-  });
-
   // Flexible Capsule Scale (from 0.75x to 2.2x, pleasing to eye)
   const [capsuleScale, setCapsuleScale] = useState<number>(() => {
     try {
@@ -349,12 +348,6 @@ export const DailyTasksView: React.FC = () => {
     } catch {}
     return 1.0;
   });
-
-  // Draggable resize refs & state
-  const [isResizing, setIsResizing] = useState(false);
-  const isDraggingResizeRef = useRef(false);
-  const dragStartXRef = useRef(0);
-  const dragStartWidthRef = useRef(540);
 
   const todayDateStr = new Date().toISOString().split('T')[0];
 
@@ -466,59 +459,6 @@ export const DailyTasksView: React.FC = () => {
     } catch {}
   };
 
-  // Butter-smooth draggable horizontal modal resize handler
-  const handleStartResize = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    isDraggingResizeRef.current = true;
-    setIsResizing(true);
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    dragStartXRef.current = clientX;
-    dragStartWidthRef.current = modalWidth;
-    document.body.style.cursor = 'ew-resize';
-    document.body.style.userSelect = 'none';
-
-    let currentWidth = modalWidth;
-    let rafId: number | null = null;
-
-    const onPointerMove = (ev: MouseEvent | TouchEvent) => {
-      if (!isDraggingResizeRef.current) return;
-      const currentX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX;
-      const deltaX = currentX - dragStartXRef.current;
-      const availableWidth = window.innerWidth;
-      const maxAllowed = Math.min(1080, Math.max(500, availableWidth - (isSettingsOpen ? 370 : 64)));
-      const targetWidth = Math.max(420, Math.min(maxAllowed, Math.round(dragStartWidthRef.current + deltaX)));
-
-      if (targetWidth === currentWidth) return;
-      currentWidth = targetWidth;
-
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        setModalWidth(targetWidth);
-      });
-    };
-
-    const onPointerUp = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      isDraggingResizeRef.current = false;
-      setIsResizing(false);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      window.removeEventListener('mousemove', onPointerMove);
-      window.removeEventListener('mouseup', onPointerUp);
-      window.removeEventListener('touchmove', onPointerMove);
-      window.removeEventListener('touchend', onPointerUp);
-
-      try {
-        localStorage.setItem('daily_task_modal_width', currentWidth.toString());
-      } catch {}
-    };
-
-    window.addEventListener('mousemove', onPointerMove, { passive: false });
-    window.addEventListener('mouseup', onPointerUp);
-    window.addEventListener('touchmove', onPointerMove, { passive: false });
-    window.addEventListener('touchend', onPointerUp);
-  };
 
   // Capsule scale changes
   const handleScaleChange = (val: number) => {
@@ -1068,7 +1008,7 @@ export const DailyTasksView: React.FC = () => {
                   borderRadius: '1.25rem',
                   borderWidth: isCardActive ? '2px' : '1px',
                 }}
-                className={`p-4 border transition-all duration-200 hover:border-zinc-400 hover:shadow-md cursor-pointer flex flex-col justify-between group relative ${
+                className={`p-4 border transition-all duration-200 hover:border-blue-300/70 hover:shadow-md cursor-pointer flex flex-col justify-between group relative ${
                   isCardActive ? 'ring-2 ring-blue-500/20 bg-blue-50/15' : ''
                 }`}
               >
@@ -1083,13 +1023,13 @@ export const DailyTasksView: React.FC = () => {
                         aria-label={isDoneToday ? 'Mark unmarked' : 'Mark item'}
                         style={{
                           borderRadius: '0.5rem',
-                          backgroundColor: isDoneToday ? '#10B981' : 'transparent',
-                          borderColor: isDoneToday ? '#10B981' : theme.colors.borderMedium,
+                          backgroundColor: isDoneToday ? '#0D9488' : 'transparent',
+                          borderColor: isDoneToday ? '#0D9488' : theme.colors.borderMedium,
                           color: isDoneToday ? '#FFFFFF' : 'transparent',
                           minWidth: '22px',
                           minHeight: '22px',
                         }}
-                        className="w-5 h-5 mt-0.5 border flex items-center justify-center shrink-0 transition-colors cursor-pointer hover:border-emerald-500"
+                        className="w-5 h-5 mt-0.5 border flex items-center justify-center shrink-0 transition-colors cursor-pointer hover:border-teal-500"
                         title={isDoneToday ? 'Toggle mark' : 'Mark item'}
                       >
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -1184,14 +1124,14 @@ export const DailyTasksView: React.FC = () => {
                 <div className="pt-2.5 border-t border-zinc-100 flex items-center justify-between text-[11px] font-medium text-zinc-400">
                   <span>
                     {isDoneToday ? (
-                      <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                      <span className="text-teal-600 font-semibold flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" /> Done today
                       </span>
                     ) : (
                       'Pending today'
                     )}
                   </span>
-                  <span className="text-zinc-600 group-hover:text-zinc-900 font-bold group-hover:underline flex items-center gap-0.5">
+                  <span className="text-zinc-600 group-hover:text-blue-600 font-bold group-hover:underline flex items-center gap-0.5">
                     Open
                   </span>
                 </div>
@@ -1208,7 +1148,7 @@ export const DailyTasksView: React.FC = () => {
         type="button"
         id="fab-create-task"
         onClick={handleOpenAdd}
-        className="fixed bottom-24 sm:bottom-8 right-6 z-30 w-14 h-14 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer min-h-[48px] min-w-[48px] border border-white/20"
+        className="fixed bottom-24 sm:bottom-8 right-6 z-30 w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 to-teal-500 hover:opacity-95 text-white shadow-[0_10px_28px_-4px_rgba(37,99,235,0.45)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer min-h-[48px] min-w-[48px] border border-white/25"
         title="Create New Task"
       >
         <Plus className="w-6 h-6 stroke-[2.5]" />
@@ -1223,10 +1163,8 @@ export const DailyTasksView: React.FC = () => {
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-x-auto"
           onClick={() => {
+            // Clicking outside does not close the popup; automatically persist pending inputs
             autoSaveTaskNow();
-            setShowAddModal(false);
-            setEditingTask(null);
-            setIsSettingsOpen(false);
           }}
         >
           {/* Flex Container for Main Modal + Docked Sidecar Settings */}
@@ -1234,13 +1172,13 @@ export const DailyTasksView: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
             className="flex items-start gap-3 max-w-[98vw] max-h-[94dvh] transition-all"
           >
-            {/* MAIN TASK POPUP WRAPPER (Resizable with outer curved handle) */}
-            <div
-              style={{
-                width: `${modalWidth}px`,
-                maxWidth: '92vw',
-              }}
-              className="relative flex flex-col shrink-0 max-h-[92dvh]"
+            {/* MAIN TASK POPUP WRAPPER with All / Only This options */}
+            <ResizablePopupWrapper
+              scope="tasks"
+              popupId="task_details"
+              defaultWidth={560}
+              isSettingsOpen={isSettingsOpen}
+              className="max-h-[92dvh]"
             >
               {/* Inner Modal Card Container */}
               <div className="flex flex-col flex-1 bg-white rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden relative">
@@ -1541,13 +1479,13 @@ export const DailyTasksView: React.FC = () => {
                                 </button>
                               </div>
 
-                              <input
-                                type="text"
+                              <textarea
+                                rows={3}
                                 autoFocus
                                 value={popoverCapsuleText}
                                 onChange={(e) => setPopoverCapsuleText(e.target.value)}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();
                                     handleCommitNewCapsule();
                                   } else if (e.key === 'Escape') {
@@ -1558,12 +1496,12 @@ export const DailyTasksView: React.FC = () => {
                                 onBlur={() => {
                                   handleCommitNewCapsule();
                                 }}
-                                placeholder="Type capsule title..."
-                                className="w-full px-3 py-2 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:bg-white focus:border-zinc-900 focus:outline-none text-zinc-900 font-medium placeholder:text-zinc-400 min-h-[38px]"
+                                placeholder="First line: capsule title...&#10;Shift+Enter: detailed note"
+                                className="w-full px-3 py-2 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:bg-white focus:border-zinc-900 focus:outline-none text-zinc-900 font-medium placeholder:text-zinc-400 resize-none min-h-[64px] leading-relaxed"
                               />
 
                               <div className="flex items-center justify-between text-[10px] text-zinc-400 px-0.5">
-                                <span>Press <kbd className="font-mono font-bold bg-zinc-100 px-1 py-0.5 rounded">Enter</kbd> or tap outside</span>
+                                <span><kbd className="font-mono font-bold bg-zinc-100 px-1 py-0.5 rounded">Enter</kbd> saves · <kbd className="font-mono font-bold bg-zinc-100 px-1 py-0.5 rounded">Shift+Enter</kbd> newline</span>
                                 <button
                                   type="button"
                                   onMouseDown={(e) => e.preventDefault()}
@@ -1652,28 +1590,7 @@ export const DailyTasksView: React.FC = () => {
                   </button>
                 </div>
               </div>
-
-              {/* CURVED PREMIUM DRAG & RESIZE HANDLE (Positioned OUTSIDE the popup with butter-smooth feel) */}
-              <div
-                onMouseDown={handleStartResize}
-                onTouchStart={handleStartResize}
-                className={`hidden sm:flex absolute -right-3.5 bottom-6 z-40 items-center justify-center cursor-ew-resize select-none transition-all group/resize-handle ${
-                  isResizing ? 'scale-110' : 'hover:scale-105 active:scale-95'
-                }`}
-                title="Drag horizontally to resize popup width (butter smooth)"
-              >
-                <div
-                  className={`w-7 h-14 rounded-full flex flex-col items-center justify-center gap-1.5 transition-all shadow-xl backdrop-blur-md border ${
-                    isResizing
-                      ? 'bg-zinc-900 text-white border-zinc-900 ring-4 ring-zinc-900/15'
-                      : 'bg-white hover:bg-zinc-900 text-zinc-400 hover:text-white border-zinc-200/90 hover:border-zinc-900 shadow-md'
-                  }`}
-                >
-                  <div className="w-1 h-2.5 rounded-full bg-current opacity-70 group-hover/resize-handle:opacity-100 transition-opacity" />
-                  <div className="w-1 h-2.5 rounded-full bg-current opacity-70 group-hover/resize-handle:opacity-100 transition-opacity" />
-                </div>
-              </div>
-            </div>
+            </ResizablePopupWrapper>
 
             {/* SIDECAR SETTINGS PANEL (Docks right beside popup on desktop, moves with it) */}
             {isSettingsOpen && (
@@ -1851,24 +1768,33 @@ export const DailyTasksView: React.FC = () => {
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
-          onClick={() => setExpandedSubtask(null)}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: theme.colors.bgElevated,
-              borderRadius: '1.25rem',
-              boxShadow: theme.shadows.lg,
-              border: `1px solid ${theme.colors.borderLight}`,
-              maxWidth: '480px',
-              width: '100%',
-            }}
-            className="flex flex-col overflow-hidden p-4 space-y-3"
+          <ResizablePopupWrapper
+            scope="tasks"
+            popupId="capsule_details"
+            defaultWidth={740}
+            minWidth={460}
           >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: theme.colors.bgElevated,
+                borderRadius: '1.5rem',
+                boxShadow: theme.shadows.lg,
+              }}
+              className="w-full flex flex-col overflow-hidden p-5 sm:p-6 space-y-4 border border-zinc-200"
+            >
             {/* Header: Title on left, Clipboard logo + Cross (X) on right */}
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-200">
-              <span className="text-xs font-bold text-zinc-800">Edit Capsule</span>
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+              <div className="min-w-0 flex-1 pr-3">
+                <span className="text-sm font-black text-zinc-900 uppercase tracking-wider block">
+                  Capsule Details
+                </span>
+                <span className="text-[11px] text-zinc-400 font-medium block mt-0.5">
+                  First line is shown on the card · Everything after line break appears here
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1876,23 +1802,26 @@ export const DailyTasksView: React.FC = () => {
                     setSubtaskCopied(true);
                     setTimeout(() => setSubtaskCopied(false), 2000);
                   }}
-                  className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors cursor-pointer flex items-center gap-1 text-xs"
+                  className="p-2 rounded-xl text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
                   title="Copy whole text to clipboard"
                 >
                   {subtaskCopied ? (
                     <>
-                      <Check className="w-4 h-4 text-emerald-600" />
-                      <span className="text-[11px] text-emerald-600 font-semibold">Copied!</span>
+                      <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+                      <span className="text-[11px] text-emerald-600 font-bold">Copied!</span>
                     </>
                   ) : (
-                    <Copy className="w-4 h-4" />
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span className="text-[11px] hidden sm:inline">Copy</span>
+                    </>
                   )}
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setExpandedSubtask(null)}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer"
                   title="Close"
                 >
                   <X className="w-4 h-4" />
@@ -1900,15 +1829,15 @@ export const DailyTasksView: React.FC = () => {
               </div>
             </div>
 
-            {/* Body */}
-            <div>
+            {/* Body: Broad, spacious multi-line editor */}
+            <div className="flex-1">
               <textarea
-                rows={6}
+                rows={10}
                 autoFocus
                 value={expandedEditText}
                 onChange={(e) => setExpandedEditText(e.target.value)}
-                placeholder="Write anything you want in this capsule..."
-                className="w-full p-3 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:bg-white focus:border-zinc-900 focus:outline-none resize-y leading-relaxed text-zinc-900"
+                placeholder="Line 1: Capsule title (shown on the main card)&#10;&#10;Line 2+: Extended notes, ideas, or details (visible when opened)..."
+                className="w-full p-4 text-sm bg-zinc-50 border border-zinc-200 rounded-2xl focus:bg-white focus:border-zinc-900 focus:outline-none resize-y leading-relaxed text-zinc-900 min-h-[220px]"
               />
             </div>
 
@@ -1948,7 +1877,8 @@ export const DailyTasksView: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
+            </div>
+          </ResizablePopupWrapper>
         </div>
       )}
     </div>
